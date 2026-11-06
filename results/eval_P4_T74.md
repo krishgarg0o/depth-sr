@@ -209,17 +209,23 @@ x8
 | Hybrid (ours) | Hybrid | 7.370 | 2.933 | 22.359 | 0.8337 |
 
 
-## 5. Processing latency and memory (x4, cuda)
+## 5. Processing latency and memory
 
-| Method | Latency (ms / image) | Peak extra memory (MB, CPU) |
-|---|---|---|
-| Nearest | 1.8 | 0.0 |
-| Bilinear | 0.8 | 0.0 |
-| Bicubic | 1.1 | 0.0 |
-| Joint Bilateral (JBU) | 96.3 | 0.0 |
-| Guided Filter | 11.3 | 0.0 |
-| Classical pipeline (ours) | 128.3 | 0.0 |
-| Deep learning only (TGNet) | 123.2 | 0.0 |
-| Hybrid (ours) | 252.5 | 0.0 |
+GPU latency: Kaggle T4, x4, measured during this evaluation run (the classical stage runs on the CPU of that machine).
+CPU latency and memory: 2-core CPU machine, x8, 624x464 output, median of 3 runs after warm-up, final checkpoint
+(commit 2c94f06). Memory is the peak resident memory of the whole Python process, including the PyTorch runtime
+(~550 MB for imports alone); measured separately with resource.getrusage because the in-script memory probe
+(scripts/evaluate.py) under-reports on Kaggle.
+
+| Method | GPU latency x4 (ms / image) | CPU latency x8 (ms / image) | Peak process memory, CPU (MB) |
+|---|---|---|---|
+| Nearest | 1.8 | < 1 | 559 |
+| Bilinear | 0.8 | < 1 | 559 |
+| Bicubic | 1.1 | < 1 | 553 |
+| Joint Bilateral (JBU) | 96.3 | 219 | 566 |
+| Guided Filter | 11.3 | 6 | 570 |
+| Classical pipeline (ours) | 128.3 | 244 | 583 |
+| Deep learning only (TGNet) | 123.2 | 1059 | 1239 |
+| Hybrid (ours) | 252.5 | 1298 | 1284 |
 
 Model: TGNet, 1.99 M parameters, ~7.6 MB (fp32).
