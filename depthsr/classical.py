@@ -99,6 +99,9 @@ def adaptive_params(depth_lr: np.ndarray, scale: int) -> dict:
         "sigma_color": float(np.clip(12 + 400 * noise, 10, 40)),
         # guided filter regularisation: noisier -> stronger smoothing
         "gf_eps": float(np.clip(1e-4 + 0.5 * noise ** 2 * 1e2, 1e-4, 1e-2)),
+        # how much to smooth outside boundaries: 0 for clean input, 1 for clearly noisy input.
+        # the estimator's clean-input floor grows ~0.0006 per scale step (LR structure), so subtract it.
+        "smooth_w": float(np.clip((noise - 0.004 - 0.0006 * scale) / 0.012, 0, 1)),
     }
 
 
@@ -211,12 +214,15 @@ def snap_boundaries(depth: np.ndarray, band: np.ndarray, k: int = 5, thresh: flo
 
 # ----------------------------------------------------------------------------- full classical pipeline
 def classical_refine(depth_lr: np.ndarray, rgb: np.ndarray, scale: int, return_all: bool = False,
-                     use_trust: bool = True, use_fill: bool = True, use_snap: bool = True):
+                     use_trust: bool = True, use_fill: bool = True, use_snap: bool = False,
+                     use_adapt: bool = True):
     """Classical (non-learned) edge-aware upsampling.
 
-    1. hole fill at LR  2. bicubic up  3. adaptive params  4. trust map
-    5. trust-gated mix: JBU (sharp, RGB-guided) near boundaries, depth-only smoothing elsewhere
-    6. boundary snapping
+    1. hole fill at LR  2. bicubic up  3. adaptive params (noise estimate)  4. trust map
+    5. noise-adaptive base: bicubic for clean input, depth-guided smoothing for noisy input
+    6. trust-weighted mix: JBU (sharp, RGB-guided) only where RGB edges agree with depth
+       discontinuities; at x16 the whole boundary band is trusted more (LR edges are very coarse)
+    7. optional boundary snapping (off by default - it raised RMSE on clean NYU depth)
     """
     H, W = rgb.shape[:2]
     hole_mask_lr = (depth_lr <= 0).astype(np.float32)
@@ -234,11 +240,14 @@ def classical_refine(depth_lr: np.ndarray, rgb: np.ndarray, scale: int, return_a
     jbu_ms = (_t.perf_counter() - _t0) * 1000
     trust, band, texture = trust_map(rgb, up, scale)
 
+    w = params["smooth_w"] if use_adapt else 1.0
     if use_trust:
-        # outside boundaries smooth with depth itself as guide (no texture copying)
+        # outside boundaries: depth-guided smoothing only as much as the measured noise requires
         dn = up / (up.max() + 1e-6)
         smooth = guided_filter(dn, up, params["radius"], params["gf_eps"])
-        refined = band * jbu + (1 - band) * smooth
+        base = (1 - w) * up + w * smooth
+        t = band * np.clip(2.0 * trust + w + max(0.0, np.log2(scale) - 3), 0, 1)
+        refined = t * jbu + (1 - t) * base
     else:
         refined = jbu
     if use_snap:
