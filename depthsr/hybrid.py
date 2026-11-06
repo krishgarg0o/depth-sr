@@ -66,7 +66,12 @@ class DepthSR:
             sd = torch.load(ckpt, map_location=self.device)
             self.net.load_state_dict(sd.get("model", sd))
             self.has_weights = True
-        torch.set_num_threads(max(1, os.cpu_count() or 1))
+        # cloud containers report the host's cores; oversubscribing threads makes CPU inference much slower
+        try:
+            n_cpu = len(os.sched_getaffinity(0))
+        except AttributeError:
+            n_cpu = os.cpu_count() or 1
+        torch.set_num_threads(max(1, min(4, n_cpu)))
 
     @torch.no_grad()
     def _net(self, inp, return_aux=False, no_gate=False):
