@@ -161,7 +161,7 @@ with c1:
     avail = [m for m in METHODS if SR.has_weights or m not in ("dl", "hybrid")]
     method = st.selectbox("Method", avail, index=avail.index("hybrid" if SR.has_weights else "classical"),
                           format_func=lambda m: NAMES[m])
-    compare_all = st.checkbox("Compare all methods", True)
+    compare_all = st.checkbox("Compare all methods (slower: runs every method)", False)
     go_btn = st.button("Upsample depth", type="primary", use_container_width=True)
 
 with c2:
