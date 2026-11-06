@@ -1,6 +1,6 @@
 # Design Document - P4: Edge-Preserving Depth Map Upsampling and Refinement
 
-Team: T74 | USNs: 1RUA24CSE0186, 1RUA24CSE0197, 1RUA24CSE0208, 1RUA24CSE0209 | Live app: `<HF Space URL>` | Repo: https://github.com/krishgarg0o/depth-sr
+Team: T74 | USNs: 1RUA24CSE0186, 1RUA24CSE0197, 1RUA24CSE0208, 1RUA24CSE0209 | Live app: https://depthsr-t74.streamlit.app | Repo: https://github.com/krishgarg0o/depth-sr
 
 ## 1. Problem statement
 Depth sensors (ToF, structured light, LiDAR) give depth maps that are **low resolution, sparse, noisy and
@@ -84,8 +84,9 @@ elliptical holes (4 % of pixels). Sparse mode keeps N random points (depth-compl
   spurious texture gradients).
 * Training: random 256 px crops, random scale {2,4,8,16}, random noise (50 %), holes (30 %), horizontal flips;
   25 % of samples are fed **without** the classical stage (bicubic input, zero trust maps). This makes the same
-  network act as the "DL only" baseline. AdamW, OneCycle LR 3e-4, 15k iterations, batch 16, mixed precision.
-  Best checkpoint by validation RMSE.
+  network act as the "DL only" baseline. AdamW, OneCycle LR 2e-4, 6000 iterations, batch 8, fp32
+  (a first run with fp16 mixed precision and LR 5e-4 overflowed after ~600 iterations; we switched to fp32, bounded the
+  residual with 0.5*tanh and skip non-finite batches). Best checkpoint by validation RMSE: 52.5 % lower than its input.
 
 ### 6.3 Why hybrid
 The classical stage already delivers sharp, texture-free boundaries cheaply, so the network only learns a
@@ -97,15 +98,32 @@ colour-ambiguous edges, slanted surfaces).
 Metrics on valid GT pixels (`metrics.py`): RMSE, MAE (cm on NYU), PSNR and SSIM (depth normalised by GT max),
 **Boundary RMSE** (5 px band around GT discontinuities), **Edge F1** (2 px tolerance), **Texture copy**
 (spurious depth gradient on flat but textured regions), latency (ms/image) and peak memory (fresh process RSS).
-Factors x2, x4, x8, x16; clean and noisy+holes protocols; unseen NYU test set and Middlebury.
+Factors x2, x4, x8, x16 on the first 100 test images (NYU 1000-1099); noisy+holes protocol at x4/x8 and the ablation on
+30 of them (time budget). The Middlebury download was refused (HTTP 403), so cross-dataset results are not reported.
 Results: `results/eval_P4_<TEAM>.md`, `results/eval_middlebury.md`, figures in `results/figs/`.
 
 ## 8. Results summary
-`<paste the x4 / x8 rows from results/eval_P4_<TEAM>.md; 2-3 sentences on what improved and by how much>`
+RMSE in cm, 100 unseen NYU test images (full tables: results/eval_P4_T74.md).
+
+| Method | x2 | x4 | x8 | x16 | x4 noisy | x8 noisy |
+|---|---|---|---|---|---|---|
+| Bicubic | 1.54 | 3.23 | 5.82 | 9.56 | 61.89 | 61.45 |
+| Joint bilateral | 1.72 | 3.35 | 5.52 | 8.63 | 6.26 | 8.44 |
+| Classical pipeline (ours) | 3.62 | 4.72 | 6.44 | 9.07 | 7.20 | 9.07 |
+| TGNet only | **1.25** | **2.50** | **4.36** | 7.02 | 22.88 | 23.72 |
+| **Hybrid (ours)** | 1.81 | 2.79 | 4.47 | **6.88** | **5.49** | **7.26** |
+
+The hybrid beats every interpolation and classical method from x4 upwards (x8: 4.47 vs 5.52 cm for JBU, edge F1 0.889 vs
+0.761), is best at x16 and is the clear winner on noisy depth with holes (12-14 % below JBU, 3-4x below TGNet alone).
+TGNet alone is most accurate on clean input at x2-x8, because the classical stage's snapping/smoothing slightly hurts
+already-clean depth. At x2 even bicubic (1.54) beats the hybrid (1.81).
 
 ## 9. Ablation
 See `results/ablation_nyu.md`. Removed components: trust map/gating, hole filling, boundary snapping, fusion gate;
-plus classical-only and DL-only. `<summarise which component contributes most>`
+plus classical-only and DL-only (30 images, x4 and x8, clean and noisy). The **trust map / gating** contributes most on clean
+input (removing it: +9-28 % RMSE, +18-48 % texture copying); **hole filling** is essential on incomplete depth (without it
+RMSE rises from 5.5 to 55 cm); boundary snapping slightly increases RMSE (1-2 % lower when removed) but raises edge F1 on
+clean x4 (0.970 vs 0.951); the fusion gate gives a small, consistent gain (0.4-1.6 %).
 
 ## 10. Failure analysis
 See `results/failure_cases_nyu.md` (the three worst test images with error maps, statistics and likely causes).
@@ -113,7 +131,9 @@ Known failure modes: thin structures that vanish at x8/x16, boundaries between o
 edge), dark RGB, glass/mirrors where Kinect GT is itself wrong, and very large depth ranges.
 
 ## 11. Deployment
-Gradio app (`app.py`) on Hugging Face Spaces (Docker SDK, CPU basic). Input validation for file type, depth
+Streamlit app (`streamlit_app/app.py`) on Streamlit Community Cloud (free CPU, deploys from GitHub on every push);
+a Gradio version (`app.py`) with a Dockerfile is kept for local/Docker use. (Hugging Face Spaces now requires PRO for
+Gradio/Docker Spaces, so it was not used.) Input validation for file type, depth
 units, bit depth, colour-image-as-depth, aspect-ratio mismatch, too-small/too-large images (auto-resized to
 <= 960 px). Progress bar, clear error messages, examples from the unseen test set, 3D point-cloud comparison,
 16-bit PNG / .npy download. Reproducible with `docker build` or `pip install -r requirements.txt && python app.py`.
@@ -124,6 +144,8 @@ No secrets are needed or committed.
   is out of distribution - sparse mode works but is not tuned for it.
 * Synthetic degradation (bicubic + Gaussian noise) is simpler than real sensor noise (multipath, IR saturation).
 * If foreground and background share colour, RGB guidance cannot locate the boundary.
+* Our classical pipeline alone is worse than bicubic on clean input; it only pays off on noisy/incomplete depth.
+* Cross-dataset generalisation (Middlebury) could not be measured: the dataset server refused the download.
 * NYU GT depth is itself inpainted (colourisation method) in places, which biases metrics near holes.
 * RGB-only mode uses Depth Anything V2 pseudo ground truth, so its metrics show upsampling quality, not metric accuracy.
 
