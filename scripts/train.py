@@ -126,7 +126,7 @@ def main():
                   f"({(1 - v / v0) * 100:+.1f}% better)", flush=True)
             if v < best:
                 best = v
-                torch.save({"model": net.state_dict(), "iter": it, "val": v}, args.out)
+                torch.save({"model": net.state_dict(), "iter": it, "val": v, "classical": "v2"}, args.out)
                 print("  saved", args.out)
         if it >= args.iters:
             break
