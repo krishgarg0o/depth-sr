@@ -1,0 +1,6 @@
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch==2.5.1+cpu
+numpy>=1.26,<2.2
+opencv-contrib-python-headless==4.10.0.84
+plotly>=5.20
+streamlit>=1.40
