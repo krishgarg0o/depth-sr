@@ -1,6 +1,6 @@
 # Design Document - P4: Edge-Preserving Depth Map Upsampling and Refinement
 
-Team: T74 | USNs: 1RUA24CSE0186, 1RUA24CSE0197, 1RUA24CSE0208, 1RUA24CSE0209 | Live app: https://depthsr-t74.streamlit.app | Repo: https://github.com/krishgarg0o/depth-sr
+Team: T74 | Jidvish Gupta (1RUA24CSE0186), Keerthana Kiran (1RUA24CSE0197), Krish Garg (1RUA24CSE0208), Krishaa Daga (1RUA24CSE0209) | Live app: https://depthsr-t74.streamlit.app | Repo: https://github.com/krishgarg0o/depth-sr
 
 ## 1. Problem statement
 Depth sensors (ToF, structured light, LiDAR) give depth maps that are **low resolution, sparse, noisy and
@@ -57,19 +57,23 @@ literature); the noisy protocol additionally adds depth-proportional Gaussian no
 elliptical holes (4 % of pixels). Sparse mode keeps N random points (depth-completion setting).
 
 ## 6. Method
-### 6.1 Classical stage (all non-learned, explainable)
+### 6.1 Classical stage (all non-learned, explainable) - final version "v2"
 1. **Hole filling** - multi-scale normalised convolution: G*(d m) / G*m with doubling sigma, only missing pixels
    are written, so measurements are never altered. Also densifies sparse input.
 2. **Adaptive parameter selection** - noise level estimated by MAD of the Laplacian of log-depth; the JBU spatial
-   radius grows with the scale factor, colour sigma and guided-filter eps grow with the noise level.
+   radius grows with the scale factor, colour sigma and guided-filter eps grow with the noise level, and a smoothing
+   weight w = clip((noise - 0.004 - 0.0006 * scale) / 0.012, 0, 1) is 0 for clean and 1 for clearly noisy input.
 3. **Discontinuity band** - gradient magnitude of log-depth (relative jumps, so it works at any depth range),
    dilated by about `scale` pixels because the true edge lies within that distance of the blurred LR edge.
 4. **Trust map** - `RGB edge x band`. RGB edges inside the band are real object boundaries; RGB edges outside it
    are texture and are suppressed (`texture = RGB edge x (1 - band)`).
-5. **Trust-gated refinement** - `band * JBU(RGB guide) + (1 - band) * GuidedFilter(depth guide)`: sharp RGB-guided
-   edges only where a depth edge exists, depth-only smoothing elsewhere (no texture copying).
-6. **Boundary snapping** - in strong-discontinuity regions each pixel is snapped to the local foreground (min) or
-   background (max) depth, removing flying pixels.
+5. **Noise-adaptive base** - `base = (1 - w) * bicubic + w * GuidedFilter(depth guide)`: no smoothing for clean depth.
+6. **Trust-weighted refinement** - `t = band * clip(2 * trust + w + max(0, log2(scale) - 3), 0, 1)`,
+   `D_classical = t * JBU(RGB guide) + (1 - t) * base`: sharp RGB-guided edges only where a depth edge exists.
+7. **Boundary snapping (v1 only, now off by default)** - snapped pixels near edges to the local min/max depth. Diagnosis
+   showed it caused speckle on thin/slanted structures (NYU x2: v1 classical 3.62 cm vs bicubic 1.54 cm), so v2 removed
+   it; v2 classical is 1.50 cm. Checkpoints record which classical version they were trained with (`classical` key), so
+   older v1 weights still receive v1 inputs.
 
 ### 6.2 Deep learning stage - TGNet (1.99 M parameters, 7.6 MB)
 * Depth encoder: classical depth (normalised by its 99th percentile, so it is unit/scale invariant),
@@ -86,7 +90,7 @@ elliptical holes (4 % of pixels). Sparse mode keeps N random points (depth-compl
   25 % of samples are fed **without** the classical stage (bicubic input, zero trust maps). This makes the same
   network act as the "DL only" baseline. AdamW, OneCycle LR 2e-4, 6000 iterations, batch 8, fp32
   (a first run with fp16 mixed precision and LR 5e-4 overflowed after ~600 iterations; we switched to fp32, bounded the
-  residual with 0.5*tanh and skip non-finite batches). Best checkpoint by validation RMSE: 52.5 % lower than its input.
+  residual with 0.5*tanh and skip non-finite batches). Best checkpoint by validation RMSE. The final model (trained on the v2 classical stage) is 52.0 % lower than its input.
 
 ### 6.3 Why hybrid
 The classical stage already delivers sharp, texture-free boundaries cheaply, so the network only learns a
@@ -99,7 +103,8 @@ Metrics on valid GT pixels (`metrics.py`): RMSE, MAE (cm on NYU), PSNR and SSIM 
 **Boundary RMSE** (5 px band around GT discontinuities), **Edge F1** (2 px tolerance), **Texture copy**
 (spurious depth gradient on flat but textured regions), latency (ms/image) and peak memory (fresh process RSS).
 Factors x2, x4, x8, x16 on the first 100 test images (NYU 1000-1099); noisy+holes protocol at x4/x8 and the ablation on
-30 of them (time budget). The Middlebury download was refused (HTTP 403), so cross-dataset results are not reported.
+30 of them (time budget). Cross-dataset: 26 Middlebury 2005/2006 scenes at x2/x4/x8 (Kaggle mirror minhanhtruong/middleburystereodataset,
+because the original server refuses automated downloads).
 Results: `results/eval_P4_<TEAM>.md`, `results/eval_middlebury.md`, figures in `results/figs/`.
 
 ## 8. Results summary
@@ -109,21 +114,25 @@ RMSE in cm, 100 unseen NYU test images (full tables: results/eval_P4_T74.md).
 |---|---|---|---|---|---|---|
 | Bicubic | 1.54 | 3.23 | 5.82 | 9.56 | 61.89 | 61.45 |
 | Joint bilateral | 1.72 | 3.35 | 5.52 | 8.63 | 6.26 | 8.44 |
-| Classical pipeline (ours) | 3.62 | 4.72 | 6.44 | 9.07 | 7.20 | 9.07 |
-| TGNet only | **1.25** | **2.50** | **4.36** | 7.02 | 22.88 | 23.72 |
-| **Hybrid (ours)** | 1.81 | 2.79 | 4.47 | **6.88** | **5.49** | **7.26** |
+| Classical pipeline (ours, v2) | 1.50 | 3.06 | 5.53 | 8.81 | 6.00 | 8.28 |
+| TGNet only | **1.14** | 2.48 | 4.38 | 7.05 | 22.88 | 23.73 |
+| **Hybrid (ours)** | 1.19 | **2.44** | **4.33** | **6.94** | **5.46** | **7.37** |
 
-The hybrid beats every interpolation and classical method from x4 upwards (x8: 4.47 vs 5.52 cm for JBU, edge F1 0.889 vs
-0.761), is best at x16 and is the clear winner on noisy depth with holes (12-14 % below JBU, 3-4x below TGNet alone).
-TGNet alone is most accurate on clean input at x2-x8, because the classical stage's snapping/smoothing slightly hurts
-already-clean depth. At x2 even bicubic (1.54) beats the hybrid (1.81).
+Middlebury 2005/2006 (26 scenes, unseen dataset, disparity units; results/eval_middlebury.md): hybrid 1.59 / 2.69 / 4.02
+at x2/x4/x8 vs bicubic 2.13 / 3.64 / 5.52 and JBU 1.98 / 2.95 / 4.24; best in every clean and noisy setting.
+
+The hybrid is the most accurate method from x4 to x16 with the best boundary RMSE, PSNR, SSIM and edge F1 at x8; TGNet
+alone is marginally better at x2. On noisy depth with holes the hybrid is 9-11 % better than the best classical method
+and 3-4x better than TGNet alone. Compared with the v1 system, retraining on the v2 classical stage improved x2/x4/x8
+(1.81 -> 1.19, 2.79 -> 2.44, 4.47 -> 4.33 cm) and cost 0.9 % at x16 and 1.5 % on noisy x8.
 
 ## 9. Ablation
-See `results/ablation_nyu.md`. Removed components: trust map/gating, hole filling, boundary snapping, fusion gate;
-plus classical-only and DL-only (30 images, x4 and x8, clean and noisy). The **trust map / gating** contributes most on clean
-input (removing it: +9-28 % RMSE, +18-48 % texture copying); **hole filling** is essential on incomplete depth (without it
-RMSE rises from 5.5 to 55 cm); boundary snapping slightly increases RMSE (1-2 % lower when removed) but raises edge F1 on
-clean x4 (0.970 vs 0.951); the fusion gate gives a small, consistent gain (0.4-1.6 %).
+See `results/ablation_nyu.md` (30 images; RMSE change vs the full hybrid, clean x4 / clean x8 / noisy x4 / noisy x8):
+- trust map / gating removed: +28 % / +15 % / +9 % / +5 %, texture copying +18-54 %
+- noise-adaptive smoothing removed: +19 % / +9 % / 0 % / 0 % (on noisy input w is already 1)
+- v1 boundary snapping re-enabled: +57 % / +18 % / +18 % / +8 %
+- hole filling removed: 0 % on clean input, +897 % / +644 % on noisy input with holes
+- fusion gate removed (alpha = 1): +0.4-1.7 %
 
 ## 10. Failure analysis
 See `results/failure_cases_nyu.md` (the three worst test images with error maps, statistics and likely causes).
@@ -144,8 +153,7 @@ No secrets are needed or committed.
   is out of distribution - sparse mode works but is not tuned for it.
 * Synthetic degradation (bicubic + Gaussian noise) is simpler than real sensor noise (multipath, IR saturation).
 * If foreground and background share colour, RGB guidance cannot locate the boundary.
-* Our classical pipeline alone is worse than bicubic on clean input; it only pays off on noisy/incomplete depth.
-* Cross-dataset generalisation (Middlebury) could not be measured: the dataset server refused the download.
+* The v2 classical stage has lower edge F1 than v1 at x8 (0.63 vs 0.78): snapping produced crisp, though often wrong, edges.
 * NYU GT depth is itself inpainted (colourisation method) in places, which biases metrics near holes.
 * RGB-only mode uses Depth Anything V2 pseudo ground truth, so its metrics show upsampling quality, not metric accuracy.
 
