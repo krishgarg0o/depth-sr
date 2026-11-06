@@ -60,13 +60,14 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--data", default="data")
     ap.add_argument("--synthetic", action="store_true")
-    ap.add_argument("--iters", type=int, default=15000)
-    ap.add_argument("--bs", type=int, default=16)
-    ap.add_argument("--lr", type=float, default=5e-4)
+    ap.add_argument("--iters", type=int, default=6000)
+    ap.add_argument("--bs", type=int, default=8)
+    ap.add_argument("--lr", type=float, default=2e-4)
     ap.add_argument("--crop", type=int, default=256)
     ap.add_argument("--workers", type=int, default=4)
     ap.add_argument("--val_every", type=int, default=1000)
     ap.add_argument("--out", default="checkpoints/tgnet.pt")
+    ap.add_argument("--amp", action="store_true", help="fp16 mixed precision (off by default: fp16 overflowed)")
     args = ap.parse_args()
 
     torch.manual_seed(0)
@@ -88,7 +89,9 @@ def main():
     print(f"device={dev} params={count_params(net)/1e6:.2f}M train_samples={len(tr)}")
     opt = torch.optim.AdamW(net.parameters(), lr=args.lr, weight_decay=1e-4)
     sched = torch.optim.lr_scheduler.OneCycleLR(opt, max_lr=args.lr, total_steps=args.iters, pct_start=0.05)
-    scaler = torch.amp.GradScaler(enabled=dev == "cuda")
+    use_amp = args.amp and dev == "cuda"
+    scaler = torch.amp.GradScaler(enabled=use_amp)
+    skipped = 0
     os.makedirs(os.path.dirname(args.out) or ".", exist_ok=True)
     os.makedirs("results", exist_ok=True)
     log = open("results/train_log.csv", "w", newline="")
@@ -97,19 +100,24 @@ def main():
     best, t0, run = 1e9, time.time(), 0.0
     for it, b in enumerate(tl, 1):
         a, gt = batch_to(b, dev)
-        with torch.autocast(device_type="cuda", dtype=torch.float16, enabled=dev == "cuda"):
+        with torch.autocast(device_type="cuda", dtype=torch.float16, enabled=use_amp):
             pred = net(*a)
         loss = loss_fn(pred.float(), gt)
         opt.zero_grad(set_to_none=True)
+        if not torch.isfinite(loss):          # guard: never let one bad batch poison training
+            skipped += 1
+            sched.step()
+            continue
         scaler.scale(loss).backward()
         scaler.unscale_(opt)
         torch.nn.utils.clip_grad_norm_(net.parameters(), 1.0)
         scaler.step(opt)
         scaler.update()
         sched.step()
-        run = 0.98 * run + 0.02 * loss.item() if it > 1 else loss.item()
+        run = 0.98 * run + 0.02 * loss.item() if run > 0 else loss.item()
         if it % 50 == 0:
-            print(f"it {it}/{args.iters} loss {run:.4f} lr {sched.get_last_lr()[0]:.2e} {time.time()-t0:.0f}s", flush=True)
+            print(f"it {it}/{args.iters} loss {run:.4f} lr {sched.get_last_lr()[0]:.2e} skipped {skipped} "
+                  f"{time.time()-t0:.0f}s", flush=True)
         if it % args.val_every == 0 or it == args.iters:
             v, v0 = validate(net, vl, dev)
             wr.writerow([it, f"{run:.5f}", f"{v:.5f}", f"{v0:.5f}", f"{time.time()-t0:.0f}"])
