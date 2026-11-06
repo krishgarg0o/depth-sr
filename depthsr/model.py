@@ -72,8 +72,8 @@ class TGNet(nn.Module):
         y = self.u2(y, x1)
         y = self.u1(y, x0)
         out = self.head(y)
-        residual = out[:, :1]
-        alpha = torch.sigmoid(out[:, 1:2] + 2.0)    # starts ~0.88 -> trusts the network early
+        residual = 0.5 * torch.tanh(out[:, :1])     # bounded correction (normalised depth units)
+        alpha = torch.sigmoid(out[:, 1:2].clamp(-20, 20) + 2.0)    # starts ~0.88 -> trusts the network early
         pred = init + alpha * residual
         if return_aux:
             return pred, {"residual": residual, "alpha": alpha, "guide_gate": gate.mean(1, keepdim=True)}
