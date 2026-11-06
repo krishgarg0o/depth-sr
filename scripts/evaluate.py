@@ -251,7 +251,8 @@ def main():
 
     # ---- ablation (hybrid variants) on 4x and 8x, both protocols
     abl_cfgs = {"Full hybrid": {}, "- trust map / gating": {"no_trust": True}, "- hole filling": {"no_fill": True},
-                "- boundary snapping": {"no_snap": True}, "- fusion gate (alpha=1)": {"no_gate": True}}
+                "+ boundary snapping (v1 design)": {"snap": True},
+                "- noise-adaptive smoothing": {"no_adapt": True}, "- fusion gate (alpha=1)": {"no_gate": True}}
     ablation = {}
     if sr.has_weights:
         ab_items = items[: min(len(items), args.noisy_limit)]
