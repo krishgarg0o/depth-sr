@@ -1,0 +1,56 @@
+flowchart LR
+    subgraph IN["Inputs (app.py / io_utils.py)"]
+        RGB["HR RGB guide"]
+        LR["LR / sparse / noisy depth"]
+        VAL["Validation: format, units,<br/>aspect ratio, size limits"]
+    end
+
+    subgraph CL["Classical stage (classical.py)"]
+        HF["Hole filling<br/>multi-scale normalised conv."]
+        AP["Adaptive params<br/>noise estimate -> radius, sigma, eps"]
+        UP["Bicubic upsampling"]
+        ED["RGB edges (Sobel/Canny)"]
+        DD["Depth discontinuity band<br/>grad log-depth, dilated by scale"]
+        TM["Trust map = RGB edge x band<br/>texture edges = RGB edge x (1-band)"]
+        JBU["Joint bilateral (RGB-guided)"]
+        GF["Guided filter (depth-guided)"]
+        MIX["Trust-gated mix<br/>band*JBU + (1-band)*GF"]
+        SN["Boundary snapping<br/>(remove flying pixels)"]
+    end
+
+    subgraph DL["TGNet (model.py, 1.99 M params)"]
+        DE["Depth encoder<br/>init, valid, log2 scale"]
+        GE["Guide encoder<br/>RGB, trust, band"]
+        GG["Trust-conditioned gate<br/>on guide features"]
+        UN["U-Net (3 levels, ResBlocks)"]
+        HD["Heads: residual r, fusion gate alpha"]
+    end
+
+    OUT["D = D_classical + alpha * r<br/>(hybrid.py)"]
+    EV["metrics.py / evaluate.py<br/>RMSE MAE PSNR SSIM<br/>Boundary RMSE, Edge F1, Texture copy<br/>latency, memory"]
+    UI["Gradio UI: stages, comparison,<br/>3D point cloud, downloads"]
+
+    RGB --> VAL
+    LR --> VAL
+    VAL --> HF --> UP
+    VAL --> AP
+    UP --> DD
+    VAL --> ED
+    ED --> TM
+    DD --> TM
+    UP --> JBU
+    UP --> GF
+    AP --> JBU
+    AP --> GF
+    JBU --> MIX
+    GF --> MIX
+    TM --> MIX
+    MIX --> SN
+    SN --> DE
+    TM --> GE
+    RGB --> GE
+    GE --> GG --> UN
+    DE --> UN --> HD --> OUT
+    SN --> OUT
+    OUT --> UI
+    OUT --> EV
