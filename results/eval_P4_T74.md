@@ -16,9 +16,9 @@ PSNR/SSIM on depth normalised by GT max. BoundaryRMSE = RMSE within 5 px of GT d
 | Bicubic | Interpolation | 1.539 | 0.444 |
 | Joint Bilateral (JBU) | Classical refinement | 1.724 | 0.530 |
 | Guided Filter | Classical refinement | 2.910 | 0.999 |
-| Classical pipeline (ours) | Classical refinement | 3.623 | 0.920 |
-| Deep learning only (TGNet) | Deep learning | 1.248 | 0.409 |
-| Hybrid (ours) | Hybrid | 1.805 | 0.562 |
+| Classical pipeline (ours) | Classical refinement | 1.496 | 0.430 |
+| Deep learning only (TGNet) | Deep learning | 1.137 | 0.364 |
+| Hybrid (ours) | Hybrid | 1.185 | 0.367 |
 
 **x4**
 
@@ -29,9 +29,9 @@ PSNR/SSIM on depth normalised by GT max. BoundaryRMSE = RMSE within 5 px of GT d
 | Bicubic | Interpolation | 3.230 | 0.976 |
 | Joint Bilateral (JBU) | Classical refinement | 3.353 | 1.104 |
 | Guided Filter | Classical refinement | 4.932 | 1.869 |
-| Classical pipeline (ours) | Classical refinement | 4.721 | 1.398 |
-| Deep learning only (TGNet) | Deep learning | 2.503 | 0.760 |
-| Hybrid (ours) | Hybrid | 2.785 | 0.924 |
+| Classical pipeline (ours) | Classical refinement | 3.057 | 0.939 |
+| Deep learning only (TGNet) | Deep learning | 2.475 | 0.747 |
+| Hybrid (ours) | Hybrid | 2.442 | 0.740 |
 
 **x8**
 
@@ -42,9 +42,9 @@ PSNR/SSIM on depth normalised by GT max. BoundaryRMSE = RMSE within 5 px of GT d
 | Bicubic | Interpolation | 5.820 | 2.006 |
 | Joint Bilateral (JBU) | Classical refinement | 5.518 | 2.008 |
 | Guided Filter | Classical refinement | 7.274 | 3.027 |
-| Classical pipeline (ours) | Classical refinement | 6.444 | 2.277 |
-| Deep learning only (TGNet) | Deep learning | 4.363 | 1.428 |
-| Hybrid (ours) | Hybrid | 4.469 | 1.576 |
+| Classical pipeline (ours) | Classical refinement | 5.528 | 1.942 |
+| Deep learning only (TGNet) | Deep learning | 4.378 | 1.466 |
+| Hybrid (ours) | Hybrid | 4.328 | 1.431 |
 
 **x16**
 
@@ -55,9 +55,9 @@ PSNR/SSIM on depth normalised by GT max. BoundaryRMSE = RMSE within 5 px of GT d
 | Bicubic | Interpolation | 9.555 | 3.779 |
 | Joint Bilateral (JBU) | Classical refinement | 8.627 | 3.453 |
 | Guided Filter | Classical refinement | 9.101 | 3.815 |
-| Classical pipeline (ours) | Classical refinement | 9.074 | 3.601 |
-| Deep learning only (TGNet) | Deep learning | 7.023 | 2.575 |
-| Hybrid (ours) | Hybrid | 6.881 | 2.551 |
+| Classical pipeline (ours) | Classical refinement | 8.814 | 3.532 |
+| Deep learning only (TGNet) | Deep learning | 7.045 | 2.590 |
+| Hybrid (ours) | Hybrid | 6.940 | 2.554 |
 
 ## 2. PSNR and SSIM
 
@@ -70,9 +70,9 @@ PSNR/SSIM on depth normalised by GT max. BoundaryRMSE = RMSE within 5 px of GT d
 | Bicubic | Interpolation | 50.516 | 0.9975 |
 | Joint Bilateral (JBU) | Classical refinement | 49.501 | 0.9967 |
 | Guided Filter | Classical refinement | 44.898 | 0.9918 |
-| Classical pipeline (ours) | Classical refinement | 43.111 | 0.9915 |
-| Deep learning only (TGNet) | Deep learning | 52.438 | 0.9982 |
-| Hybrid (ours) | Hybrid | 49.208 | 0.9969 |
+| Classical pipeline (ours) | Classical refinement | 50.753 | 0.9976 |
+| Deep learning only (TGNet) | Deep learning | 53.223 | 0.9985 |
+| Hybrid (ours) | Hybrid | 52.825 | 0.9984 |
 
 **x4**
 
@@ -83,9 +83,9 @@ PSNR/SSIM on depth normalised by GT max. BoundaryRMSE = RMSE within 5 px of GT d
 | Bicubic | Interpolation | 44.025 | 0.9905 |
 | Joint Bilateral (JBU) | Classical refinement | 43.710 | 0.9898 |
 | Guided Filter | Classical refinement | 40.314 | 0.9834 |
-| Classical pipeline (ours) | Classical refinement | 40.784 | 0.9855 |
-| Deep learning only (TGNet) | Deep learning | 46.293 | 0.9944 |
-| Hybrid (ours) | Hybrid | 45.379 | 0.9934 |
+| Classical pipeline (ours) | Classical refinement | 44.501 | 0.9912 |
+| Deep learning only (TGNet) | Deep learning | 46.402 | 0.9945 |
+| Hybrid (ours) | Hybrid | 46.483 | 0.9946 |
 
 **x8**
 
@@ -96,9 +96,9 @@ PSNR/SSIM on depth normalised by GT max. BoundaryRMSE = RMSE within 5 px of GT d
 | Bicubic | Interpolation | 38.892 | 0.9787 |
 | Joint Bilateral (JBU) | Classical refinement | 39.394 | 0.9797 |
 | Guided Filter | Classical refinement | 36.939 | 0.9761 |
-| Classical pipeline (ours) | Classical refinement | 38.106 | 0.9773 |
-| Deep learning only (TGNet) | Deep learning | 41.488 | 0.9876 |
-| Hybrid (ours) | Hybrid | 41.260 | 0.9872 |
+| Classical pipeline (ours) | Classical refinement | 39.344 | 0.9796 |
+| Deep learning only (TGNet) | Deep learning | 41.437 | 0.9874 |
+| Hybrid (ours) | Hybrid | 41.558 | 0.9877 |
 
 **x16**
 
@@ -109,9 +109,9 @@ PSNR/SSIM on depth normalised by GT max. BoundaryRMSE = RMSE within 5 px of GT d
 | Bicubic | Interpolation | 34.592 | 0.9685 |
 | Joint Bilateral (JBU) | Classical refinement | 35.495 | 0.9712 |
 | Guided Filter | Classical refinement | 35.007 | 0.9731 |
-| Classical pipeline (ours) | Classical refinement | 35.060 | 0.9699 |
-| Deep learning only (TGNet) | Deep learning | 37.391 | 0.9798 |
-| Hybrid (ours) | Hybrid | 37.570 | 0.9803 |
+| Classical pipeline (ours) | Classical refinement | 35.263 | 0.9720 |
+| Deep learning only (TGNet) | Deep learning | 37.352 | 0.9798 |
+| Hybrid (ours) | Hybrid | 37.475 | 0.9800 |
 
 ## 3. Edge preservation and boundary accuracy
 
@@ -124,9 +124,9 @@ PSNR/SSIM on depth normalised by GT max. BoundaryRMSE = RMSE within 5 px of GT d
 | Bicubic | Interpolation | 5.338 | 0.9749 | 0.266 |
 | Joint Bilateral (JBU) | Classical refinement | 5.864 | 0.9515 | 0.276 |
 | Guided Filter | Classical refinement | 9.906 | 0.8567 | 0.360 |
-| Classical pipeline (ours) | Classical refinement | 12.882 | 0.9649 | 0.225 |
-| Deep learning only (TGNet) | Deep learning | 4.128 | 0.9894 | 0.242 |
-| Hybrid (ours) | Hybrid | 6.128 | 0.9815 | 0.227 |
+| Classical pipeline (ours) | Classical refinement | 5.179 | 0.9741 | 0.263 |
+| Deep learning only (TGNet) | Deep learning | 3.765 | 0.9904 | 0.237 |
+| Hybrid (ours) | Hybrid | 3.971 | 0.9918 | 0.237 |
 
 **x4**
 
@@ -137,9 +137,9 @@ PSNR/SSIM on depth normalised by GT max. BoundaryRMSE = RMSE within 5 px of GT d
 | Bicubic | Interpolation | 11.276 | 0.8238 | 0.351 |
 | Joint Bilateral (JBU) | Classical refinement | 11.409 | 0.8823 | 0.392 |
 | Guided Filter | Classical refinement | 16.525 | 0.7028 | 0.502 |
-| Classical pipeline (ours) | Classical refinement | 16.481 | 0.9469 | 0.282 |
-| Deep learning only (TGNet) | Deep learning | 8.451 | 0.9634 | 0.268 |
-| Hybrid (ours) | Hybrid | 9.359 | 0.9631 | 0.267 |
+| Classical pipeline (ours) | Classical refinement | 10.615 | 0.8613 | 0.348 |
+| Deep learning only (TGNet) | Deep learning | 8.349 | 0.9571 | 0.262 |
+| Hybrid (ours) | Hybrid | 8.268 | 0.9701 | 0.264 |
 
 **x8**
 
@@ -150,9 +150,9 @@ PSNR/SSIM on depth normalised by GT max. BoundaryRMSE = RMSE within 5 px of GT d
 | Bicubic | Interpolation | 19.812 | 0.4822 | 0.424 |
 | Joint Bilateral (JBU) | Classical refinement | 18.443 | 0.7611 | 0.564 |
 | Guided Filter | Classical refinement | 23.204 | 0.5419 | 0.618 |
-| Classical pipeline (ours) | Classical refinement | 21.825 | 0.7847 | 0.420 |
-| Deep learning only (TGNet) | Deep learning | 14.590 | 0.8757 | 0.336 |
-| Hybrid (ours) | Hybrid | 14.782 | 0.8891 | 0.344 |
+| Classical pipeline (ours) | Classical refinement | 18.709 | 0.6285 | 0.438 |
+| Deep learning only (TGNet) | Deep learning | 14.556 | 0.8741 | 0.330 |
+| Hybrid (ours) | Hybrid | 14.433 | 0.8977 | 0.336 |
 
 **x16**
 
@@ -163,9 +163,9 @@ PSNR/SSIM on depth normalised by GT max. BoundaryRMSE = RMSE within 5 px of GT d
 | Bicubic | Interpolation | 30.592 | 0.2601 | 0.420 |
 | Joint Bilateral (JBU) | Classical refinement | 27.292 | 0.5607 | 0.636 |
 | Guided Filter | Classical refinement | 28.328 | 0.3767 | 0.551 |
-| Classical pipeline (ours) | Classical refinement | 28.885 | 0.5079 | 0.490 |
-| Deep learning only (TGNet) | Deep learning | 22.583 | 0.7196 | 0.432 |
-| Hybrid (ours) | Hybrid | 22.044 | 0.7429 | 0.430 |
+| Classical pipeline (ours) | Classical refinement | 28.041 | 0.4318 | 0.487 |
+| Deep learning only (TGNet) | Deep learning | 22.705 | 0.7200 | 0.428 |
+| Hybrid (ours) | Hybrid | 22.263 | 0.7582 | 0.458 |
 
 ## 4. Performance across upsampling factors (RMSE, cm)
 
@@ -176,9 +176,9 @@ PSNR/SSIM on depth normalised by GT max. BoundaryRMSE = RMSE within 5 px of GT d
 | Bicubic | 1.539 | 3.230 | 5.820 | 9.555 |
 | Joint Bilateral (JBU) | 1.724 | 3.353 | 5.518 | 8.627 |
 | Guided Filter | 2.910 | 4.932 | 7.274 | 9.101 |
-| Classical pipeline (ours) | 3.623 | 4.721 | 6.444 | 9.074 |
-| Deep learning only (TGNet) | 1.248 | 2.503 | 4.363 | 7.023 |
-| Hybrid (ours) | 1.805 | 2.785 | 4.469 | 6.881 |
+| Classical pipeline (ours) | 1.496 | 3.057 | 5.528 | 8.814 |
+| Deep learning only (TGNet) | 1.137 | 2.475 | 4.378 | 7.045 |
+| Hybrid (ours) | 1.185 | 2.442 | 4.328 | 6.940 |
 
 **Noisy + missing depth (robustness)**
 
@@ -191,9 +191,9 @@ x4
 | Bicubic | Interpolation | 61.888 | 16.554 | 56.125 | 0.6234 |
 | Joint Bilateral (JBU) | Classical refinement | 6.264 | 2.875 | 17.732 | 0.8716 |
 | Guided Filter | Classical refinement | 7.530 | 3.060 | 23.839 | 0.5486 |
-| Classical pipeline (ours) | Classical refinement | 7.200 | 2.603 | 22.685 | 0.9135 |
-| Deep learning only (TGNet) | Deep learning | 22.878 | 5.880 | 24.585 | 0.6949 |
-| Hybrid (ours) | Hybrid | 5.485 | 2.071 | 15.921 | 0.9373 |
+| Classical pipeline (ours) | Classical refinement | 5.997 | 2.484 | 17.748 | 0.8537 |
+| Deep learning only (TGNet) | Deep learning | 22.875 | 5.908 | 24.508 | 0.6973 |
+| Hybrid (ours) | Hybrid | 5.456 | 2.086 | 15.880 | 0.9308 |
 
 x8
 
@@ -204,9 +204,9 @@ x8
 | Bicubic | Interpolation | 61.445 | 16.948 | 64.404 | 0.3772 |
 | Joint Bilateral (JBU) | Classical refinement | 8.436 | 3.903 | 25.053 | 0.7600 |
 | Guided Filter | Classical refinement | 10.063 | 4.420 | 30.885 | 0.4284 |
-| Classical pipeline (ours) | Classical refinement | 9.073 | 3.655 | 28.440 | 0.7497 |
-| Deep learning only (TGNet) | Deep learning | 23.715 | 6.666 | 30.818 | 0.6335 |
-| Hybrid (ours) | Hybrid | 7.258 | 2.909 | 21.867 | 0.8397 |
+| Classical pipeline (ours) | Classical refinement | 8.281 | 3.605 | 25.267 | 0.6800 |
+| Deep learning only (TGNet) | Deep learning | 23.734 | 6.759 | 30.884 | 0.6350 |
+| Hybrid (ours) | Hybrid | 7.370 | 2.933 | 22.359 | 0.8337 |
 
 
 ## 5. Processing latency and memory (x4, cuda)
@@ -214,12 +214,12 @@ x8
 | Method | Latency (ms / image) | Peak extra memory (MB, CPU) |
 |---|---|---|
 | Nearest | 1.8 | 0.0 |
-| Bilinear | 0.9 | 0.0 |
+| Bilinear | 0.8 | 0.0 |
 | Bicubic | 1.1 | 0.0 |
-| Joint Bilateral (JBU) | 95.8 | 0.0 |
-| Guided Filter | 11.5 | 0.0 |
-| Classical pipeline (ours) | 130.2 | 0.0 |
-| Deep learning only (TGNet) | 126.8 | 0.0 |
-| Hybrid (ours) | 257.6 | 0.0 |
+| Joint Bilateral (JBU) | 96.3 | 0.0 |
+| Guided Filter | 11.3 | 0.0 |
+| Classical pipeline (ours) | 128.3 | 0.0 |
+| Deep learning only (TGNet) | 123.2 | 0.0 |
+| Hybrid (ours) | 252.5 | 0.0 |
 
 Model: TGNet, 1.99 M parameters, ~7.6 MB (fp32).

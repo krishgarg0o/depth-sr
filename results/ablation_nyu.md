@@ -6,46 +6,50 @@ Inference-time ablation: each component of the hybrid pipeline is switched off i
 
 | Variant | RMSE (cm) | Boundary RMSE (cm) | Edge F1 | Texture copy |
 |---|---|---|---|---|
-| Full hybrid | 3.613 | 11.994 | 0.9700 | 0.266 |
-| - trust map / gating | 4.616 | 15.558 | 0.9499 | 0.313 |
-| - hole filling | 3.613 | 11.994 | 0.9700 | 0.266 |
-| - boundary snapping | 3.582 | 11.848 | 0.9514 | 0.282 |
-| - fusion gate (alpha=1) | 3.629 | 12.021 | 0.9689 | 0.272 |
-| Classical pipeline (ours) | 4.721 | 16.481 | 0.9469 | 0.282 |
-| Deep learning only (TGNet) | 2.503 | 8.451 | 0.9634 | 0.268 |
+| Full hybrid | 3.147 | 10.526 | 0.9763 | 0.267 |
+| - trust map / gating | 4.017 | 13.301 | 0.9279 | 0.316 |
+| - hole filling | 3.147 | 10.526 | 0.9763 | 0.267 |
+| + boundary snapping (v1 design) | 4.952 | 17.070 | 0.9727 | 0.275 |
+| - noise-adaptive smoothing | 3.750 | 12.045 | 0.9519 | 0.252 |
+| - fusion gate (alpha=1) | 3.188 | 10.653 | 0.9779 | 0.263 |
+| Classical pipeline (ours) | 3.057 | 10.615 | 0.8613 | 0.348 |
+| Deep learning only (TGNet) | 2.475 | 8.349 | 0.9571 | 0.262 |
 
 ## clean x8
 
 | Variant | RMSE (cm) | Boundary RMSE (cm) | Edge F1 | Texture copy |
 |---|---|---|---|---|
-| Full hybrid | 5.844 | 19.140 | 0.8918 | 0.356 |
-| - trust map / gating | 6.511 | 21.409 | 0.8485 | 0.437 |
-| - hole filling | 5.844 | 19.140 | 0.8918 | 0.356 |
-| - boundary snapping | 5.719 | 18.642 | 0.8884 | 0.357 |
-| - fusion gate (alpha=1) | 5.940 | 19.389 | 0.8986 | 0.364 |
-| Classical pipeline (ours) | 6.444 | 21.825 | 0.7847 | 0.420 |
-| Deep learning only (TGNet) | 4.363 | 14.590 | 0.8757 | 0.336 |
+| Full hybrid | 5.617 | 18.486 | 0.9040 | 0.348 |
+| - trust map / gating | 6.482 | 21.203 | 0.8466 | 0.449 |
+| - hole filling | 5.617 | 18.486 | 0.9040 | 0.348 |
+| + boundary snapping (v1 design) | 6.638 | 22.090 | 0.9090 | 0.372 |
+| - noise-adaptive smoothing | 6.095 | 19.648 | 0.8675 | 0.346 |
+| - fusion gate (alpha=1) | 5.714 | 18.792 | 0.9114 | 0.346 |
+| Classical pipeline (ours) | 5.528 | 18.709 | 0.6285 | 0.438 |
+| Deep learning only (TGNet) | 4.378 | 14.556 | 0.8741 | 0.330 |
 
 ## noisy x4
 
 | Variant | RMSE (cm) | Boundary RMSE (cm) | Edge F1 | Texture copy |
 |---|---|---|---|---|
-| Full hybrid | 5.485 | 15.921 | 0.9373 | 0.299 |
-| - trust map / gating | 6.446 | 18.956 | 0.9155 | 0.442 |
-| - hole filling | 55.114 | 49.635 | 0.3394 | 3.268 |
-| - boundary snapping | 5.402 | 15.608 | 0.9223 | 0.313 |
-| - fusion gate (alpha=1) | 5.506 | 15.925 | 0.9383 | 0.299 |
-| Classical pipeline (ours) | 7.200 | 22.685 | 0.9135 | 0.411 |
-| Deep learning only (TGNet) | 22.878 | 24.585 | 0.6949 | 0.479 |
+| Full hybrid | 5.456 | 15.880 | 0.9308 | 0.297 |
+| - trust map / gating | 5.940 | 16.948 | 0.8966 | 0.458 |
+| - hole filling | 54.384 | 49.004 | 0.3147 | 3.551 |
+| + boundary snapping (v1 design) | 6.442 | 19.887 | 0.9295 | 0.311 |
+| - noise-adaptive smoothing | 5.456 | 15.880 | 0.9308 | 0.297 |
+| - fusion gate (alpha=1) | 5.480 | 15.924 | 0.9357 | 0.292 |
+| Classical pipeline (ours) | 5.997 | 17.748 | 0.8537 | 0.429 |
+| Deep learning only (TGNet) | 22.875 | 24.508 | 0.6973 | 0.505 |
 
 ## noisy x8
 
 | Variant | RMSE (cm) | Boundary RMSE (cm) | Edge F1 | Texture copy |
 |---|---|---|---|---|
-| Full hybrid | 7.258 | 21.867 | 0.8397 | 0.406 |
-| - trust map / gating | 7.932 | 23.857 | 0.8134 | 0.534 |
-| - hole filling | 55.725 | 58.027 | 0.2967 | 2.148 |
-| - boundary snapping | 7.190 | 21.560 | 0.8374 | 0.405 |
-| - fusion gate (alpha=1) | 7.315 | 21.999 | 0.8475 | 0.413 |
-| Classical pipeline (ours) | 9.073 | 28.440 | 0.7497 | 0.503 |
-| Deep learning only (TGNet) | 23.715 | 30.818 | 0.6335 | 0.531 |
+| Full hybrid | 7.370 | 22.359 | 0.8337 | 0.407 |
+| - trust map / gating | 7.764 | 23.610 | 0.8137 | 0.545 |
+| - hole filling | 54.818 | 57.462 | 0.2793 | 2.355 |
+| + boundary snapping (v1 design) | 7.936 | 24.573 | 0.8296 | 0.435 |
+| - noise-adaptive smoothing | 7.370 | 22.359 | 0.8337 | 0.407 |
+| - fusion gate (alpha=1) | 7.425 | 22.521 | 0.8422 | 0.407 |
+| Classical pipeline (ours) | 8.281 | 25.267 | 0.6800 | 0.486 |
+| Deep learning only (TGNet) | 23.734 | 30.884 | 0.6350 | 0.579 |
