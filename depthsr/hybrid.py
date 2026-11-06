@@ -23,8 +23,12 @@ METHODS = ["nearest", "bilinear", "bicubic", "jbu", "guided", "classical", "dl",
 DEFAULT_CKPT = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "checkpoints", "tgnet.pt")
 
 
-def build_inputs(depth_lr, rgb, scale, mode="hybrid", ablate=None, classical_result=None):
-    """Prepare network inputs (numpy) for 'hybrid' or 'dl' mode."""
+def build_inputs(depth_lr, rgb, scale, mode="hybrid", ablate=None, classical_result=None, classical_version="v2"):
+    """Prepare network inputs (numpy) for 'hybrid' or 'dl' mode.
+
+    classical_version: the classical stage the network was trained with. "v1" = original design
+    (boundary snapping, always smooth outside edges); "v2" = noise-adaptive, trust-weighted, no snapping.
+    """
     ablate = ablate or {}
     H, W = rgb.shape[:2]
     if mode == "hybrid":
@@ -35,7 +39,8 @@ def build_inputs(depth_lr, rgb, scale, mode="hybrid", ablate=None, classical_res
             init, aux = C.classical_refine(depth_lr, rgb, scale, return_all=True,
                                            use_trust=not ablate.get("no_trust"),
                                            use_fill=not ablate.get("no_fill"),
-                                           use_snap=not ablate.get("no_snap"))
+                                           use_snap=classical_version == "v1" or bool(ablate.get("snap")),
+                                           use_adapt=classical_version != "v1" and not ablate.get("no_adapt"))
         valid = np.ones((H, W), np.float32) if not ablate.get("no_fill") else (init > 0).astype(np.float32)
         trust, band = aux["trust"], aux["band"]
         if ablate.get("no_trust"):
@@ -62,10 +67,13 @@ class DepthSR:
         self.device = device or ("cuda" if torch.cuda.is_available() else "cpu")
         self.net = TGNet().to(self.device).eval()
         self.has_weights = False
+        self.classical_version = "v2"
         if ckpt and os.path.exists(ckpt):
             sd = torch.load(ckpt, map_location=self.device)
             self.net.load_state_dict(sd.get("model", sd))
             self.has_weights = True
+            # checkpoints saved before the v2 classical stage carry no tag -> they expect v1 inputs
+            self.classical_version = sd.get("classical", "v1") if isinstance(sd, dict) else "v1"
         # cloud containers report the host's cores; oversubscribing threads makes CPU inference much slower
         try:
             n_cpu = len(os.sched_getaffinity(0))
@@ -105,7 +113,8 @@ class DepthSR:
         extra_ms = 0.0
         H, W = rgb.shape[:2]
         aux = {}
-        if cache is not None and "classical" in cache and method in ("classical", "jbu", "hybrid") and not ablate:
+        if (cache is not None and "classical" in cache and method in ("classical", "jbu", "hybrid") and not ablate
+                and not (method == "hybrid" and self.classical_version != "v2")):
             c_out, c_aux, c_ms = cache["classical"]
             if method == "classical":
                 return (c_out, c_aux, c_ms) if return_aux else c_out
@@ -135,7 +144,7 @@ class DepthSR:
         elif method in ("dl", "hybrid"):
             if not self.has_weights:
                 raise RuntimeError("Model weights not found (checkpoints/tgnet.pt). Train first.")
-            inp, aux = build_inputs(depth_lr, rgb, scale, method, ablate)
+            inp, aux = build_inputs(depth_lr, rgb, scale, method, ablate, classical_version=self.classical_version)
             out, net_aux = self._net(inp, no_gate=bool(ablate and ablate.get("no_gate")))
             aux.update(net_aux)
             if method == "hybrid":
