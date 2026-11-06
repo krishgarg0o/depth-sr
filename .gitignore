@@ -1,0 +1,12 @@
+__pycache__/
+*.pyc
+data/
+middlebury/
+*.mat
+*.npz
+checkpoints/*_synth.pt
+results/inference/
+.env
+.venv/
+flagged/
+.gradio/
