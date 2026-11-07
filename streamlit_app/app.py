@@ -5,6 +5,7 @@ Local: streamlit run streamlit_app/app.py
 """
 from __future__ import annotations
 
+import base64
 import glob
 import io
 import os
@@ -15,6 +16,7 @@ import cv2
 import numpy as np
 import plotly.graph_objects as go
 import streamlit as st
+import streamlit.components.v1 as components
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
@@ -26,21 +28,68 @@ from depthsr.io_utils import (DEPTH_UNITS, InputError, check_pair, colorize, col
 from depthsr.metrics import all_metrics  # noqa: E402
 
 MAX_HR_SIDE = 960
+REPO = "https://github.com/krishgarg0o/depth-sr"
+DA_MODEL = "depth-anything/Depth-Anything-V2-Small-hf"
 NAMES = {"nearest": "Nearest", "bilinear": "Bilinear", "bicubic": "Bicubic", "jbu": "Joint bilateral",
          "guided": "Guided filter", "classical": "Classical (ours)", "dl": "DL only (TGNet)", "hybrid": "Hybrid (ours)"}
+SRC_EXAMPLE, SRC_UPLOAD, SRC_PHOTO = "Example scene", "Upload RGB + depth", "Photo only"
 KINDS = ["Full-res depth (simulate degradation)", "Low-res depth (upsample it)"]
 
-st.set_page_config(page_title="DepthSR - Depth Upsampling", page_icon="🧊", layout="wide")
+st.set_page_config(page_title="DepthSR - Edge-Preserving Depth Upsampling", page_icon="🧊", layout="wide")
+
+st.markdown("""
+<style>
+.block-container {padding-top: 1.6rem; max-width: 1300px;}
+.hero {background: linear-gradient(120deg, #1e3a8a 0%, #3b82f6 55%, #06b6d4 100%); border-radius: 18px;
+       padding: 26px 30px 22px; color: white; margin-bottom: 18px;}
+.hero h1 {color: white; font-size: 2.05rem; margin: 0 0 6px 0; padding: 0; line-height: 1.2;}
+.hero p {color: #e0ecff; font-size: 1.02rem; margin: 0 0 14px 0; max-width: 860px;}
+.chips {display: flex; flex-wrap: wrap; gap: 8px;}
+.chip {background: rgba(255,255,255,0.16); border: 1px solid rgba(255,255,255,0.28); border-radius: 999px;
+       padding: 5px 12px; font-size: 0.86rem; color: white; white-space: nowrap;}
+.chip b {color: #fff;}
+.step {font-weight: 600; font-size: 0.95rem; margin: 2px 0 6px 0; color: #1e3a8a;}
+.muted {color: #6b7280; font-size: 0.86rem;}
+.footer {margin-top: 28px; padding-top: 12px; border-top: 1px solid #e5e7eb; color: #6b7280; font-size: 0.85rem;}
+.footer a {color: #2563eb; text-decoration: none;}
+div[data-testid="stMetricValue"] {font-size: 1.55rem;}
+@media (max-width: 640px) {.hero {padding: 18px 18px 16px;} .hero h1 {font-size: 1.45rem;} .chip {font-size: 0.78rem;}}
+</style>
+""", unsafe_allow_html=True)
 
 
-@st.cache_resource
+@st.cache_resource(show_spinner=False)
 def get_model():
     return DepthSR()
+
+
+@st.cache_resource(show_spinner=False)
+def get_depth_estimator():
+    """Depth Anything V2 Small (pretrained monocular depth) - only used in 'Photo only' mode."""
+    from transformers import AutoImageProcessor, AutoModelForDepthEstimation
+    proc = AutoImageProcessor.from_pretrained(DA_MODEL)
+    model = AutoModelForDepthEstimation.from_pretrained(DA_MODEL).eval()
+    return proc, model
+
+
+def estimate_depth(rgb):
+    """Pseudo ground-truth depth from a single photo (relative units, ~1-10)."""
+    import torch
+    from PIL import Image
+    proc, model = get_depth_estimator()
+    inputs = proc(images=Image.fromarray(rgb), return_tensors="pt")
+    with torch.no_grad():
+        pred = model(**inputs).predicted_depth
+    rel = pred.squeeze().cpu().numpy().astype(np.float32)          # relative inverse depth
+    rel = cv2.resize(rel, (rgb.shape[1], rgb.shape[0]), interpolation=cv2.INTER_CUBIC)
+    rel = (rel - rel.min()) / (rel.max() - rel.min() + 1e-6)
+    return (1.0 / (0.1 + rel)).astype(np.float32)
 
 
 SR = get_model()
 
 
+# ----------------------------------------------------------------------------- helpers
 def read_upload_depth(f, unit):
     suffix = os.path.splitext(f.name)[1].lower() or ".png"
     path = os.path.join("/tmp", f"upl_{time.time_ns()}{suffix}")
@@ -53,11 +102,44 @@ def read_upload_depth(f, unit):
 
 
 def read_upload_rgb(f):
-    data = np.frombuffer(f.getvalue(), np.uint8)
-    img = cv2.imdecode(data, cv2.IMREAD_COLOR)
+    img = cv2.imdecode(np.frombuffer(f.getvalue(), np.uint8), cv2.IMREAD_COLOR)
     if img is None:
         raise InputError("Could not decode the RGB image (use PNG or JPG).")
     return cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+
+
+def to_b64(img):
+    ok, buf = cv2.imencode(".jpg", cv2.cvtColor(img, cv2.COLOR_RGB2BGR), [cv2.IMWRITE_JPEG_QUALITY, 88])
+    return base64.b64encode(buf.tobytes()).decode()
+
+
+def compare_slider(left, right, left_label, right_label):
+    """Drag-to-compare view (pure HTML/CSS, no extra dependency)."""
+    h, w = left.shape[:2]
+    a, b = to_b64(left), to_b64(right)
+    html = f"""
+    <div id="wrap" style="position:relative;width:100%;max-width:{w}px;aspect-ratio:{w}/{h};margin:auto;
+         border-radius:12px;overflow:hidden;user-select:none;font-family:sans-serif;">
+      <img src="data:image/jpeg;base64,{b}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;">
+      <div id="clip" style="position:absolute;inset:0;width:50%;overflow:hidden;">
+        <img src="data:image/jpeg;base64,{a}" style="position:absolute;top:0;left:0;height:100%;width:auto;max-width:none;">
+      </div>
+      <div id="bar" style="position:absolute;top:0;bottom:0;left:50%;width:3px;background:white;
+           box-shadow:0 0 6px rgba(0,0,0,.6);"></div>
+      <span style="position:absolute;left:10px;top:10px;background:rgba(0,0,0,.6);color:#fff;padding:3px 9px;
+           border-radius:6px;font-size:13px;">{left_label}</span>
+      <span style="position:absolute;right:10px;top:10px;background:rgba(30,58,138,.85);color:#fff;padding:3px 9px;
+           border-radius:6px;font-size:13px;">{right_label}</span>
+      <input id="rng" type="range" min="0" max="100" value="50"
+        style="position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:ew-resize;margin:0;">
+    </div>
+    <script>
+      const r=document.getElementById('rng'), c=document.getElementById('clip'), bar=document.getElementById('bar'),
+            wrap=document.getElementById('wrap'), img=c.querySelector('img');
+      function upd(){{ c.style.width=r.value+'%'; bar.style.left=r.value+'%'; img.style.width=wrap.clientWidth+'px'; }}
+      r.addEventListener('input',upd); window.addEventListener('resize',upd); upd();
+    </script>"""
+    components.html(html, height=int(min(w, 760) * h / w) + 12)
 
 
 def pointcloud(depth, rgb, title):
@@ -111,151 +193,242 @@ def process(rgb, depth, kind, scale, noise, holes, sparse_pts, method, compare_a
     out, aux, ms = SR.run(depth_lr, rgb, scale, method, return_aux=True, cache=cache)
     cls_out, cls_aux, _ = cache["classical"]
 
-    methods = [m for m in METHODS if SR.has_weights or m not in ("dl", "hybrid")] if compare_all else [method]
+    wanted = [m for m in METHODS if SR.has_weights or m not in ("dl", "hybrid")] if compare_all else \
+        list(dict.fromkeys(["bicubic", method]))
     results = []
-    for m in methods:
+    for m in wanted:
         o, _, t = (out, aux, ms) if m == method else SR.run(depth_lr, rgb, scale, m, return_aux=True, cache=cache)
-        row = {"Method": NAMES[m], "Latency (ms)": round(t, 1)}
-        if gt is not None:
-            r = all_metrics(o, gt, rgb)
-            row.update({k: round(v, 4) for k, v in r.items()})
-        results.append((m, o, row))
+        results.append((m, o, t, all_metrics(o, gt, rgb) if gt is not None else None))
     return dict(rgb=rgb, gt=gt, depth_lr=depth_lr, out=out, aux=aux, ms=ms, cls_out=cls_out, cls_aux=cls_aux,
                 results=results)
 
 
-# ----------------------------------------------------------------------------- UI
-st.title("🧊 DepthSR - Edge-Preserving Depth Upsampling")
-st.markdown(
-    "Turns **low-resolution, sparse or noisy depth** into sharp high-resolution depth using the RGB image as a "
-    "guide - without copying RGB texture into the depth. Pipeline: classical hole filling + trust-gated joint "
-    "bilateral refinement → **TGNet** residual network → learned fusion gate.")
+# ----------------------------------------------------------------------------- header
+st.markdown("""
+<div class="hero">
+  <h1>🧊 DepthSR &mdash; Edge-Preserving Depth Upsampling</h1>
+  <p>Turns low-resolution, sparse or noisy depth into sharp high-resolution depth, using the RGB image as a guide
+     <b>only where it marks a real depth edge</b>, so object boundaries stay sharp and RGB texture is not copied.</p>
+  <div class="chips">
+    <span class="chip">x8 RMSE <b>4.33 cm</b> vs 5.82 bicubic</span>
+    <span class="chip">Edge F1 <b>0.90</b> vs 0.48 bicubic</span>
+    <span class="chip">Best on unseen <b>Middlebury</b></span>
+    <span class="chip">One model for <b>x2&ndash;x16</b></span>
+    <span class="chip">Team <b>T74</b> &middot; P4</span>
+  </div>
+</div>
+""", unsafe_allow_html=True)
 if not SR.has_weights:
-    st.info("Trained TGNet weights are not deployed yet - classical methods are available; "
-            "'DL only' and 'Hybrid' appear once checkpoints/tgnet.pt is added.")
+    st.info("Trained TGNet weights are not deployed - classical methods only.")
 
-samples = sorted(glob.glob(os.path.join(ROOT, "samples", "*_rgb.png")))
-samples = [s for s in samples if os.path.exists(s.replace("_rgb.png", "_depth.png"))]
-c1, c2 = st.columns([1, 2], gap="large")
-with c1:
-    src = st.radio("Input", ["Example (unseen test image)", "Upload my own"], horizontal=True)
-    if src.startswith("Example"):
-        if not samples:
-            st.warning("No example images bundled.")
-        names = [os.path.basename(s).replace("_rgb.png", "") for s in samples]
-        pick = st.selectbox("Example", names) if names else None
-        rgb_file = depth_file = None
-        kind = KINDS[0]
-        unit = "auto"
-    else:
-        rgb_file = st.file_uploader("RGB guide image", type=["png", "jpg", "jpeg", "bmp"])
-        depth_file = st.file_uploader("Depth map (16-bit PNG mm, KITTI PNG, 8-bit PNG, .npy, .pfm, .tiff)",
-                                      type=["png", "npy", "pfm", "tif", "tiff"])
-        kind = st.radio("Depth input type", KINDS)
-        unit = st.selectbox("Depth units", list(DEPTH_UNITS.keys()))
-    scale = int(st.select_slider("Upsampling factor", options=[2, 4, 8, 16], value=8))
-    with st.expander("Degradation (simulate mode)"):
-        noise = st.slider("Depth noise (relative sigma)", 0.0, 0.05, 0.0, 0.005)
-        holes = st.slider("Missing depth (fraction)", 0.0, 0.2, 0.0, 0.01)
-        sparse_pts = st.slider("Sparse: keep N points of the LR depth (0 = off)", 0, 2000, 0, 100)
-    avail = [m for m in METHODS if SR.has_weights or m not in ("dl", "hybrid")]
-    method = st.selectbox("Method", avail, index=avail.index("hybrid" if SR.has_weights else "classical"),
-                          format_func=lambda m: NAMES[m])
-    compare_all = st.checkbox("Compare all methods (slower: runs every method)", False)
-    go_btn = st.button("Upsample depth", type="primary", use_container_width=True)
+samples = sorted(s for s in glob.glob(os.path.join(ROOT, "samples", "*_rgb.png"))
+                 if os.path.exists(s.replace("_rgb.png", "_depth.png")))
 
-with c2:
-    if not go_btn:
-        st.markdown("⬅️ Pick an example or upload an RGB image + depth map, then press **Upsample depth**.")
-        with st.expander("Input options explained", expanded=True):
-            st.markdown(
-                "- **Full-res depth (simulate degradation)**: the depth is downsampled by the chosen factor "
-                "(plus optional noise / holes / sparsity) and reconstructed; your depth is the ground truth, so "
-                "metrics are reported.\n"
-                "- **Low-res depth (upsample it)**: a real low-res depth is upsampled to the RGB resolution "
-                "(no ground truth, so no metrics).")
-        st.stop()
-    try:
-        with st.spinner("Loading inputs..."):
-            if src.startswith("Example"):
-                if pick is None:
-                    raise InputError("No example available - upload your own images.")
-                p = os.path.join(ROOT, "samples", pick)
-                rgb = cv2.cvtColor(cv2.imread(p + "_rgb.png"), cv2.COLOR_BGR2RGB)
-                depth = load_depth(p + "_depth.png", "auto")
+
+def nice_name(path):
+    n = os.path.basename(path).replace("_rgb.png", "")
+    if n.startswith("nyu"):
+        return f"NYU indoor test scene {int(n[3:]) + 1} (unseen)"
+    if n.startswith("synthetic"):
+        return f"Synthetic scene {int(n[9:]) + 1} (texture-copy test)"
+    return n
+
+
+left, right = st.columns([1, 1.9], gap="large")
+
+# ----------------------------------------------------------------------------- controls
+with left:
+    with st.container(border=True):
+        st.markdown('<div class="step">1 &middot; Choose input</div>', unsafe_allow_html=True)
+        src = st.radio("Input", [SRC_EXAMPLE, SRC_UPLOAD, SRC_PHOTO], horizontal=True, label_visibility="collapsed")
+        rgb_file = depth_file = photo_file = pick = None
+        kind, unit = KINDS[0], "auto"
+        if src == SRC_EXAMPLE:
+            if samples:
+                pick = st.selectbox("Example", samples, format_func=nice_name)
+                st.image(cv2.cvtColor(cv2.imread(pick), cv2.COLOR_BGR2RGB), use_container_width=True)
             else:
-                if rgb_file is None or depth_file is None:
-                    raise InputError("Please upload both an RGB image and a depth map.")
-                rgb = read_upload_rgb(rgb_file)
-                depth = read_upload_depth(depth_file, unit)
-        t0 = time.perf_counter()
-        with st.spinner(f"Running {NAMES[method]}{' and comparing all methods' if compare_all else ''}..."):
-            R = process(rgb, depth, kind, scale, noise, holes, sparse_pts, method, compare_all)
-        total = time.perf_counter() - t0
-    except InputError as e:
-        st.error(str(e))
-        st.stop()
-    except Exception as e:  # noqa: BLE001
-        st.error(f"Processing failed: {type(e).__name__}: {e}")
-        st.stop()
+                st.warning("No example images bundled.")
+        elif src == SRC_UPLOAD:
+            rgb_file = st.file_uploader("RGB guide image", type=["png", "jpg", "jpeg", "bmp"])
+            depth_file = st.file_uploader("Depth map (16-bit PNG mm, KITTI PNG, 8-bit PNG, .npy, .pfm, .tiff)",
+                                          type=["png", "npy", "pfm", "tif", "tiff"])
+            kind = st.radio("Depth input type", KINDS)
+            unit = st.selectbox("Depth units", list(DEPTH_UNITS.keys()))
+        else:
+            photo_file = st.file_uploader("Any photo (JPG / PNG)", type=["png", "jpg", "jpeg", "bmp", "webp"])
+            st.markdown('<span class="muted">No depth sensor? Depth is first <b>estimated</b> from the photo with '
+                        'Depth Anything V2 (pretrained), then downsampled and reconstructed by our pipeline. Metrics '
+                        'measure reconstruction quality against that estimate (relative units), not metric '
+                        'accuracy. The first run downloads the model (~100 MB) and takes longer.</span>',
+                        unsafe_allow_html=True)
 
-    rgb, gt, lr, out = R["rgb"], R["gt"], R["depth_lr"], R["out"]
-    H, W = rgb.shape[:2]
-    v = gt if gt is not None else out
-    vmin, vmax = np.percentile(v[v > 0], 1), np.percentile(v[v > 0], 99)
-    p = R["cls_aux"]["params"]
-    st.success(f"Done in {total:.1f} s - {NAMES[method]} took {R['ms']:.0f} ms. Output {W}x{H} from "
-               f"{lr.shape[1]}x{lr.shape[0]} (x{scale}); missing input pixels {(lr <= 0).mean() * 100:.1f} %. "
-               f"Adaptive params: noise={p['noise']:.4f}, radius={p['radius']}, sigma_color={p['sigma_color']:.1f}.")
-    a, b, c = st.columns(3)
-    a.image(rgb, caption="RGB guide", use_container_width=True)
-    b.image(colorize(cv2.resize(lr, (W, H), interpolation=cv2.INTER_NEAREST), vmin, vmax),
-            caption=f"Low-res input x{scale} (black = missing)", use_container_width=True)
-    c.image(colorize(out, vmin, vmax), caption=f"Result: {NAMES[method]}", use_container_width=True)
+    with st.container(border=True):
+        st.markdown('<div class="step">2 &middot; Settings</div>', unsafe_allow_html=True)
+        scale = int(st.select_slider("Upsampling factor", options=[2, 4, 8, 16], value=8))
+        avail = [m for m in METHODS if SR.has_weights or m not in ("dl", "hybrid")]
+        method = st.selectbox("Method", avail, index=avail.index("hybrid" if SR.has_weights else "classical"),
+                              format_func=lambda m: NAMES[m])
+        with st.expander("Make it harder: noise, holes, sparsity"):
+            noise = st.slider("Depth noise (relative sigma)", 0.0, 0.05, 0.0, 0.005)
+            holes = st.slider("Missing depth (fraction)", 0.0, 0.2, 0.0, 0.01)
+            sparse_pts = st.slider("Sparse: keep N points of the LR depth (0 = off)", 0, 2000, 0, 100)
+        compare_all = st.checkbox("Compare all 8 methods (slower)", False)
+    go_btn = st.button("▶  Upsample depth", type="primary", use_container_width=True)
 
-    t1, t2, t3, t4 = st.tabs(["Pipeline stages", "Method comparison", "3D point cloud", "Download"])
-    with t1:
-        ca = R["cls_aux"]
-        e_rgb, _ = C.rgb_edges(rgb)
-        stages = [
-            (colorize_map(ca["hole_mask"]), "Missing-depth mask"),
-            (colorize(ca["bicubic"], vmin, vmax), "Hole-filled + bicubic"),
-            (colorize_map(e_rgb), "RGB edges"),
-            (colorize_map(ca["band"]), "Depth-discontinuity band"),
-            (colorize_map(ca["trust"]), "Trust map (RGB edge AND depth edge)"),
-            (colorize_map(ca["texture"]), "Texture edges (suppressed)"),
-            (colorize(R["cls_out"], vmin, vmax), "Classical refined"),
-        ]
-        if "residual" in R["aux"]:
-            r = R["aux"]["residual"]
-            lim = np.percentile(np.abs(r), 99) + 1e-6
-            stages.append((cv2.cvtColor(cv2.applyColorMap(((np.clip(r / lim, -1, 1) + 1) * 127.5).astype(np.uint8),
-                                                          cv2.COLORMAP_COOL), cv2.COLOR_BGR2RGB), "Network residual"))
-            stages.append((colorize_map(R["aux"]["alpha"]), "Fusion gate alpha (bright = trust network)"))
-        cols = st.columns(3)
-        for i, (im, cap) in enumerate(stages):
-            cols[i % 3].image(im, caption=f"{i + 1}. {cap}", use_container_width=True)
-    with t2:
-        cols = st.columns(4)
-        for i, (m, o, row) in enumerate(R["results"]):
-            cols[i % 4].image(colorize(o, vmin, vmax), caption=f"{NAMES[m]} ({row['Latency (ms)']:.0f} ms)",
-                              use_container_width=True)
-        st.dataframe([row for _, _, row in R["results"]], use_container_width=True, hide_index=True)
-        if gt is not None:
-            st.caption("Lower RMSE / MAE / BoundaryRMSE / TextureCopy is better; higher PSNR / SSIM / EdgeF1 is better.")
-            err = np.abs(out - gt) * (gt > 0)
-            st.image(colorize_map(np.clip(err, 0, np.percentile(err, 99.5))),
-                     caption=f"Absolute error of {NAMES[method]} (bright = large)", use_container_width=True)
-    with t3:
-        bic = next((o for m, o, _ in R["results"] if m == "bicubic"), None)
-        if bic is None:
-            bic = SR.run(lr, rgb, scale, "bicubic")
-        x, y = st.columns(2)
-        x.plotly_chart(pointcloud(bic, rgb, "Bicubic: 'flying pixels' at edges"), use_container_width=True)
-        y.plotly_chart(pointcloud(out, rgb, NAMES[method]), use_container_width=True)
-    with t4:
-        ok, png = cv2.imencode(".png", np.clip(out * 1000, 0, 65535).astype(np.uint16))
-        st.download_button("Depth as 16-bit PNG (millimetres)", png.tobytes(), "depth_upsampled_mm.png", "image/png")
-        buf = io.BytesIO()
-        np.save(buf, out)
-        st.download_button("Depth as float32 .npy (input units)", buf.getvalue(), "depth_upsampled.npy")
+# ----------------------------------------------------------------------------- results
+with right:
+    if not go_btn:
+        st.markdown("#### How it works")
+        c1, c2, c3 = st.columns(3)
+        c1.markdown("**1. Classical stage**  \nHole filling, noise estimate, RGB-guided joint bilateral filter "
+                    "applied only where the **trust map** says an RGB edge is a real depth edge.")
+        c2.markdown("**2. TGNet**  \nA 2 M-parameter guided U-Net predicts a residual correction and a per-pixel "
+                    "**fusion gate** α that decides how much to trust it.")
+        c3.markdown("**3. Result**  \nSharp boundaries, no texture copying, robust to noise and holes - from one "
+                    "model for x2 to x16.")
+        arch = os.path.join(ROOT, "docs", "architecture.png")
+        if os.path.exists(arch):
+            with st.expander("Architecture diagram"):
+                st.image(arch, use_container_width=True)
+        st.info("⬅️ Pick an example (or upload your own) and press **Upsample depth**. "
+                "Try x16 or add noise and holes to see where the hybrid shines.")
+    else:
+        try:
+            with st.status("Running the pipeline...", expanded=False) as status:
+                unit_mul, unit_lbl = 100.0, "cm"
+                if src == SRC_EXAMPLE:
+                    if pick is None:
+                        raise InputError("No example available - upload your own images.")
+                    rgb = cv2.cvtColor(cv2.imread(pick), cv2.COLOR_BGR2RGB)
+                    depth = load_depth(pick.replace("_rgb.png", "_depth.png"), "auto")
+                elif src == SRC_UPLOAD:
+                    if rgb_file is None or depth_file is None:
+                        raise InputError("Please upload both an RGB image and a depth map, or use 'Photo only'.")
+                    rgb = read_upload_rgb(rgb_file)
+                    depth = read_upload_depth(depth_file, unit)
+                    unit_mul, unit_lbl = 100.0, "cm" if unit != "8-bit relative (0-255)" else "units"
+                else:
+                    if photo_file is None:
+                        raise InputError("Please upload a photo.")
+                    rgb = limit_size(read_upload_rgb(photo_file), MAX_HR_SIDE)
+                    status.update(label="Estimating depth from the photo (Depth Anything V2)...")
+                    try:
+                        depth = estimate_depth(rgb)
+                    except Exception as e:  # noqa: BLE001 - model download / memory problems must not crash the app
+                        raise InputError("Depth estimation is unavailable right now "
+                                         f"({type(e).__name__}). Please use an example or upload RGB + depth.")
+                    kind = KINDS[0]
+                    unit_mul, unit_lbl = 1.0, "rel. units"
+                status.update(label=f"Running {NAMES[method]} at x{scale}...")
+                t0 = time.perf_counter()
+                R = process(rgb, depth, kind, scale, noise, holes, sparse_pts, method, compare_all)
+                total = time.perf_counter() - t0
+                status.update(label=f"Done in {total:.1f} s", state="complete")
+        except InputError as e:
+            st.error(str(e))
+            st.stop()
+        except Exception as e:  # noqa: BLE001
+            st.error(f"Processing failed: {type(e).__name__}: {e}")
+            st.stop()
+
+        rgb, gt, lr, out = R["rgb"], R["gt"], R["depth_lr"], R["out"]
+        H, W = rgb.shape[:2]
+        v = gt if gt is not None else out
+        vmin, vmax = np.percentile(v[v > 0], 1), np.percentile(v[v > 0], 99)
+        res = {m: (o, t, r) for m, o, t, r in R["results"]}
+        bic_o, _, bic_r = res["bicubic"]
+        _, _, sel_r = res[method]
+
+        st.success(f"**{NAMES[method]}** reconstructed {W}x{H} depth from {lr.shape[1]}x{lr.shape[0]} "
+                   f"(x{scale}) in **{R['ms'] / 1000:.2f} s**.")
+        if sel_r is not None:
+            k1, k2, k3, k4 = st.columns(4)
+            d_rmse = (sel_r["RMSE"] - bic_r["RMSE"]) * unit_mul
+            k1.metric(f"RMSE ({unit_lbl})", f"{sel_r['RMSE'] * unit_mul:.2f}",
+                      f"{d_rmse:+.2f} vs bicubic" if method != "bicubic" else None, delta_color="inverse")
+            k2.metric(f"Boundary RMSE ({unit_lbl})", f"{sel_r['BoundaryRMSE'] * unit_mul:.2f}",
+                      f"{(sel_r['BoundaryRMSE'] - bic_r['BoundaryRMSE']) * unit_mul:+.2f}" if method != "bicubic"
+                      else None, delta_color="inverse")
+            k3.metric("Edge F1", f"{sel_r['EdgeF1']:.3f}",
+                      f"{sel_r['EdgeF1'] - bic_r['EdgeF1']:+.3f}" if method != "bicubic" else None)
+            k4.metric("SSIM", f"{sel_r['SSIM']:.4f}",
+                      f"{sel_r['SSIM'] - bic_r['SSIM']:+.4f}" if method != "bicubic" else None)
+
+        st.markdown("##### Drag to compare &nbsp;<span class='muted'>bicubic (left) vs "
+                    f"{NAMES[method]} (right)</span>", unsafe_allow_html=True)
+        compare_slider(colorize(bic_o, vmin, vmax), colorize(out, vmin, vmax), "Bicubic", NAMES[method])
+
+        t1, t2, t3, t4, t5 = st.tabs(["🧩 Pipeline stages", "📊 Methods", "🌐 3D view", "🔥 Error map", "⬇️ Download"])
+        with t1:
+            ca = R["cls_aux"]
+            e_rgb, _ = C.rgb_edges(rgb)
+            stages = [
+                (rgb, "RGB guide"),
+                (colorize(cv2.resize(lr, (W, H), interpolation=cv2.INTER_NEAREST), vmin, vmax),
+                 f"Low-res input x{scale} (black = missing)"),
+                (colorize(ca["bicubic"], vmin, vmax), "Hole-filled + bicubic"),
+                (colorize_map(e_rgb), "RGB edges (all of them)"),
+                (colorize_map(ca["band"]), "Depth-discontinuity band"),
+                (colorize_map(ca["trust"]), "Trust map = RGB edge × band"),
+                (colorize_map(ca["texture"]), "Texture edges (ignored)"),
+                (colorize(R["cls_out"], vmin, vmax), "Classical stage output"),
+            ]
+            if "residual" in R["aux"]:
+                r = R["aux"]["residual"]
+                lim = np.percentile(np.abs(r), 99) + 1e-6
+                stages.append((cv2.cvtColor(cv2.applyColorMap(((np.clip(r / lim, -1, 1) + 1) * 127.5)
+                                                              .astype(np.uint8), cv2.COLORMAP_COOL), cv2.COLOR_BGR2RGB),
+                               "Network residual r"))
+                stages.append((colorize_map(R["aux"]["alpha"]), "Fusion gate α (bright = trust network)"))
+            stages.append((colorize(out, vmin, vmax), f"Final: {NAMES[method]}"))
+            if gt is not None:
+                stages.append((colorize(gt, vmin, vmax), "Ground truth" if src != SRC_PHOTO else "Estimated depth (pseudo-GT)"))
+            cols = st.columns(3)
+            for i, (im, cap) in enumerate(stages):
+                cols[i % 3].image(im, caption=f"{i + 1}. {cap}", use_container_width=True)
+        with t2:
+            cols = st.columns(4)
+            for i, (m, o, t, r) in enumerate(R["results"]):
+                cols[i % 4].image(colorize(o, vmin, vmax), caption=f"{NAMES[m]} · {t:.0f} ms", use_container_width=True)
+            rows = []
+            for m, o, t, r in R["results"]:
+                row = {"Method": NAMES[m], "Latency (ms)": round(t, 1)}
+                if r is not None:
+                    row.update({f"RMSE ({unit_lbl})": round(r["RMSE"] * unit_mul, 3),
+                                f"MAE ({unit_lbl})": round(r["MAE"] * unit_mul, 3),
+                                "PSNR": round(r["PSNR"], 2), "SSIM": round(r["SSIM"], 4),
+                                f"Boundary RMSE ({unit_lbl})": round(r["BoundaryRMSE"] * unit_mul, 3),
+                                "Edge F1": round(r["EdgeF1"], 4), "Texture copy": round(r["TextureCopy"], 3)})
+                rows.append(row)
+            st.dataframe(rows, use_container_width=True, hide_index=True)
+            if not compare_all:
+                st.caption("Tick 'Compare all 8 methods' in Settings to add every baseline.")
+            else:
+                st.caption("Lower RMSE / MAE / boundary RMSE / texture copy is better; higher PSNR / SSIM / edge F1 is better.")
+        with t3:
+            x, y = st.columns(2)
+            x.plotly_chart(pointcloud(bic_o, rgb, "Bicubic: 'flying pixels' at edges"), use_container_width=True)
+            y.plotly_chart(pointcloud(out, rgb, NAMES[method]), use_container_width=True)
+        with t4:
+            if gt is not None:
+                err = np.abs(out - gt) * (gt > 0)
+                cap = float(np.percentile(err, 99.5))
+                a, b = st.columns(2)
+                a.image(colorize_map(np.clip(np.abs(bic_o - gt) * (gt > 0), 0, cap)), caption="Bicubic |error|",
+                        use_container_width=True)
+                b.image(colorize_map(np.clip(err, 0, cap)), caption=f"{NAMES[method]} |error| (same scale)",
+                        use_container_width=True)
+            else:
+                st.info("No ground truth for a real low-resolution input, so there is no error map.")
+        with t5:
+            ok, png = cv2.imencode(".png", np.clip(out * 1000, 0, 65535).astype(np.uint16))
+            st.download_button("Depth as 16-bit PNG (millimetres)", png.tobytes(), "depth_upsampled_mm.png", "image/png")
+            buf = io.BytesIO()
+            np.save(buf, out)
+            st.download_button("Depth as float32 .npy (input units)", buf.getvalue(), "depth_upsampled.npy")
+
+st.markdown(f"""<div class="footer">DepthSR · Team T74 (Jidvish Gupta, Keerthana Kiran, Krish Garg, Krishaa Daga) ·
+Computer Vision Hackathon 2026, P4 · <a href="{REPO}" target="_blank">GitHub repository</a> ·
+<a href="{REPO}/blob/main/results/eval_P4_T74.md" target="_blank">evaluation results</a></div>""",
+            unsafe_allow_html=True)
