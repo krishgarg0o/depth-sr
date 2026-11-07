@@ -43,10 +43,10 @@ st.set_page_config(page_title="DepthSR - Edge-Preserving Depth Upsampling", page
 st.markdown("""
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@75..100,500..800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
-:root {--ink:#1d1533; --ink2:#3a3150; --paper:#f4f5f8; --surface:#ffffff; --line:#e3e6ec; --line2:#eef0f4;
-       --muted:#5f6778; --accent:#e8562a; --accent-d:#c9441c; --accent-soft:#fdeee8; --good:#13795b; --bad:#b42318;
+:root {--ink:#f1eff7; --ink2:#c9c4d6; --paper:#0b0a10; --surface:#15131c; --line:#2a2735; --line2:#211e2b;
+       --muted:#9c97ab; --accent:#ff6a3d; --accent-d:#ff8a63; --accent-soft:rgba(255,106,61,.14); --good:#34d399; --bad:#f87171;
        --r-lg:16px; --r-md:10px; --r-sm:7px;
-       --sh-1:0 1px 2px rgba(29,21,51,.05); --sh-2:0 1px 2px rgba(29,21,51,.05), 0 8px 24px -6px rgba(29,21,51,.10);}
+       --sh-1:0 1px 2px rgba(0,0,0,.4); --sh-2:0 1px 2px rgba(0,0,0,.4), 0 12px 32px -8px rgba(0,0,0,.6);}
 html, body, .stApp, .stMarkdown, button, input, textarea, select {font-family:'Inter', system-ui, sans-serif;}
 .stApp {background: var(--paper); color: var(--ink);}
 header[data-testid="stHeader"] {background: transparent; height: 0;}
@@ -65,8 +65,8 @@ h1, h2, h3, h4, .ds-title, .ds-h {font-family:'Archivo', sans-serif; font-stretc
 .ds-links a {color: var(--ink2) !important; font-weight:500; font-size:.88rem; text-decoration:none !important; padding:7px 13px;
              border-radius:999px; border:1px solid transparent; transition: background .15s, border-color .15s;}
 .ds-links a:hover {background: var(--surface); border-color: var(--line);}
-.ds-links a.cta {background: var(--ink); color:#fff !important;}
-.ds-links a.cta:hover {background: var(--ink2);}
+.ds-links a.cta {background: var(--accent); color:#fff !important;}
+.ds-links a.cta:hover {background: var(--accent-d);}
 .ds-hero {display:grid; grid-template-columns: 1.2fr 1fr; gap: 28px; align-items:end; margin-bottom: 22px;}
 .ds-title {font-size: 2.5rem !important; font-weight: 800; line-height: 1.05; margin: 0; max-width: 20ch;}
 .ds-sub {color: var(--muted); font-size: 1rem; line-height:1.55; margin: 0; max-width: 56ch;}
@@ -81,17 +81,17 @@ h1, h2, h3, h4, .ds-title, .ds-h {font-family:'Archivo', sans-serif; font-stretc
 label, [data-testid="stWidgetLabel"] p {font-weight: 600 !important; font-size: .82rem !important; color: var(--ink2) !important;}
 [data-baseweb="select"] > div, [data-testid="stFileUploaderDropzone"] {border-radius: var(--r-md) !important; border-color: var(--line) !important;
      transition: border-color .15s, box-shadow .15s;}
-[data-baseweb="select"] > div:hover {border-color: #c9cede !important;}
+[data-baseweb="select"] > div:hover {border-color: #4a4560 !important;}
 [data-baseweb="select"] > div:focus-within {box-shadow: 0 0 0 3px var(--accent-soft);}
-[data-testid="stFileUploaderDropzone"] {background: #fafbfc; border: 1.5px dashed #cdd2dc !important;}
-[data-testid="stFileUploaderDropzone"]:hover {border-color: var(--accent) !important; background: #fffaf8;}
+[data-testid="stFileUploaderDropzone"] {background: #110f17; border: 1.5px dashed #3a3548 !important;}
+[data-testid="stFileUploaderDropzone"]:hover {border-color: var(--accent) !important; background: #1a1219;}
 [data-testid="stButtonGroup"] button {border-radius: var(--r-sm) !important; font-weight: 500; transition: background .15s, color .15s;}
 .stButton > button, [data-testid="stPopover"] button, .stDownloadButton > button {border-radius: var(--r-md); font-weight: 600;
      border-color: var(--line); box-shadow: var(--sh-1); transition: transform .12s, box-shadow .15s, border-color .15s;}
 .stButton > button:hover, [data-testid="stPopover"] button:hover, .stDownloadButton > button:hover {border-color: var(--accent);
      color: var(--accent-d); box-shadow: var(--sh-2); transform: translateY(-1px);}
-.stDownloadButton > button {background: var(--ink); color: #fff; border-color: var(--ink); padding: .65rem 1rem;}
-.stDownloadButton > button:hover {background: var(--ink2); color:#fff; border-color: var(--ink2);}
+.stDownloadButton > button {background: var(--accent); color: #fff; border-color: var(--accent); padding: .65rem 1rem;}
+.stDownloadButton > button:hover {background: var(--accent-d); color:#fff; border-color: var(--accent-d);}
 *:focus-visible {outline: 2px solid var(--accent) !important; outline-offset: 2px;}
 /* result */
 .ds-legend {display:flex; align-items:center; gap:10px; color: var(--muted); font-size: 0.8rem; margin: 10px 2px 2px; font-variant-numeric: tabular-nums;}
@@ -108,22 +108,22 @@ label, [data-testid="stWidgetLabel"] p {font-weight: 600 !important; font-size: 
 .ds-fill {position:absolute; left:0; top:0; bottom:0; border-radius: 3px;}
 .good {color: var(--good); font-weight: 700;} .bad {color: var(--bad); font-weight: 700;}
 .ds-flowlabel {font-family:'Archivo',sans-serif; font-weight:700; color: var(--ink); font-size: 1rem; margin: 18px 0 2px; display:flex; align-items:center; gap:10px;}
-.ds-flowlabel .n {width:24px; height:24px; border-radius:50%; background:var(--ink); color:#fff; font-size:.78rem; display:inline-flex; align-items:center; justify-content:center;}
+.ds-flowlabel .n {width:24px; height:24px; border-radius:50%; background:var(--accent); color:#fff; font-size:.78rem; display:inline-flex; align-items:center; justify-content:center;}
 .ds-flowcap {color: var(--muted); font-size: 0.84rem; margin: 0 0 10px 34px;}
 .ds-note {color: var(--muted); font-size: 0.84rem; line-height: 1.5;}
 [data-testid="stImage"] img {border-radius: var(--r-md); box-shadow: var(--sh-1);}
 [data-testid="stCaptionContainer"], [data-testid="stImageCaption"] {color: var(--muted) !important; font-size:.78rem !important;}
 /* empty state */
-.ds-empty {border: 1.5px dashed #cdd2dc; border-radius: var(--r-lg); background: var(--surface); padding: 34px 24px; text-align:center; margin: 18px 0 22px;}
+.ds-empty {border: 1.5px dashed #3a3548; border-radius: var(--r-lg); background: var(--surface); padding: 34px 24px; text-align:center; margin: 18px 0 22px;}
 .ds-empty .ic {width:44px; height:44px; margin: 0 auto 12px; border-radius: 12px; background: var(--accent-soft); color: var(--accent-d);
      display:flex; align-items:center; justify-content:center; font-size: 20px;}
 .ds-empty h4 {margin: 0 0 4px; font-size: 1.05rem;}
 .ds-empty p {color: var(--muted); font-size: .88rem; margin: 0 auto; max-width: 46ch;}
 /* tabs */
-.stTabs [role="tablist"] {gap: 4px; background: #e9ebf1; padding: 4px; border-radius: 12px; width: fit-content; max-width: 100%; overflow-x:auto; margin-top: 26px;}
+.stTabs [role="tablist"] {gap: 4px; background: #15131c; border: 1px solid var(--line); padding: 4px; border-radius: 12px; width: fit-content; max-width: 100%; overflow-x:auto; margin-top: 26px;}
 .stTabs [role="tab"] {height: 36px; padding: 0 14px; border-radius: 9px; font-weight: 500; color: var(--ink2); background: transparent; white-space: nowrap;}
 .stTabs [role="tab"]:hover {color: var(--ink);}
-.stTabs [role="tab"][aria-selected="true"] {background: var(--surface) !important; color: var(--ink) !important; box-shadow: var(--sh-1);}
+.stTabs [role="tab"][aria-selected="true"] {background: #2a2636 !important; color: var(--ink) !important; box-shadow: var(--sh-1);}
 .stTabs [role="tablist"] > div:not([role="tab"]) {display: none;}
 .stTabs [data-testid="stTabPanel"] {padding-top: 14px;}
 /* expander, alerts, tables */
@@ -321,13 +321,13 @@ def readout_row(label, ours, base, unit, higher_better, digits):
     better = ours > base if higher_better else ours < base
     rel = (ours - base) / (abs(base) + 1e-9) * 100
     mx = max(abs(ours), abs(base), 1e-9)
-    col = "#13795b" if better else "#b42318"
+    col = "#34d399" if better else "#f87171"
     word = "better" if better else "worse"
     return (f'<div class="ds-row"><span class="k">{label}</span><span class="v">{ours:.{digits}f}{unit}</span>'
             f'<div class="d"><span>ours</span><div class="ds-track"><div class="ds-fill" style="width:{abs(ours) / mx * 100:.0f}%;'
             f'background:{col}"></div></div><span class="{"good" if better else "bad"}">{abs(rel):.0f}% {word}</span></div>'
             f'<div class="d"><span>bicubic</span><div class="ds-track"><div class="ds-fill" style="width:{abs(base) / mx * 100:.0f}%;'
-            f'background:#9aa3af"></div></div><span>{base:.{digits}f}{unit}</span></div></div>')
+            f'background:#5d586e"></div></div><span>{base:.{digits}f}{unit}</span></div></div>')
 
 
 # ----------------------------------------------------------------------------- header
