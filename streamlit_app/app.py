@@ -41,39 +41,104 @@ st.set_page_config(page_title="DepthSR - Edge-Preserving Depth Upsampling", page
 
 # ----------------------------------------------------------------------------- style
 st.markdown("""
-<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@75..100,500..800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@75..100,500..800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
-:root {--ink:#241a3b; --paper:#f3f5f7; --line:#d9dee5; --muted:#5b6472; --accent:#e8562a; --good:#13795b; --bad:#b42318;}
-.stApp {background: var(--paper);}
-header[data-testid="stHeader"] {background: transparent;}
-.block-container {padding-top: 1.2rem; padding-bottom: 2rem; max-width: 1240px;}
-h1, h2, h3, h4, .ds-title {font-family: 'Archivo', sans-serif; font-stretch: 85%; color: var(--ink); letter-spacing: -0.01em;}
-.ds-top {display:flex; align-items:flex-end; justify-content:space-between; gap:16px; flex-wrap:wrap;
-         border-bottom: 2px solid var(--ink); padding-bottom: 10px; margin-bottom: 14px;}
-.ds-title {font-size: 2.6rem !important; font-weight: 800; line-height: 1; margin: 0;}
-.ds-sub {color: var(--muted); font-size: 1rem; margin: 6px 0 0 0; max-width: 62ch;}
-.ds-links a {color: var(--ink); font-weight: 600; text-decoration: none; border-bottom: 2px solid var(--accent);
-             margin-left: 14px; font-size: 0.92rem;}
-.ds-legend {display:flex; align-items:center; gap:10px; color: var(--muted); font-size: 0.84rem; margin: 8px 0 2px;}
-.ds-bar {flex:1; height: 10px; border-radius: 5px; background: linear-gradient(90deg, TURBO_STOPS);}
-.ds-read {background: #fff; border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px;}
-.ds-read h4 {margin: 0 0 4px 0; font-size: 1.05rem;}
-.ds-read .cap {color: var(--muted); font-size: 0.82rem; margin-bottom: 10px;}
-.ds-row {display:grid; grid-template-columns: 1fr auto; row-gap: 3px; padding: 8px 0; border-top: 1px solid #eef1f4;}
-.ds-row .k {font-size: 0.86rem; color: var(--muted);}
-.ds-row .v {font-family: 'Archivo', sans-serif; font-size: 1.35rem; font-weight: 700; color: var(--ink); text-align:right;}
-.ds-row .d {grid-column: 1 / 3; display:flex; align-items:center; gap:8px; font-size: 0.78rem; color: var(--muted);}
-.ds-track {flex:1; height: 6px; background: #eef1f4; border-radius: 3px; position: relative; overflow: hidden;}
+:root {--ink:#1d1533; --ink2:#3a3150; --paper:#f4f5f8; --surface:#ffffff; --line:#e3e6ec; --line2:#eef0f4;
+       --muted:#5f6778; --accent:#e8562a; --accent-d:#c9441c; --accent-soft:#fdeee8; --good:#13795b; --bad:#b42318;
+       --r-lg:16px; --r-md:10px; --r-sm:7px;
+       --sh-1:0 1px 2px rgba(29,21,51,.05); --sh-2:0 1px 2px rgba(29,21,51,.05), 0 8px 24px -6px rgba(29,21,51,.10);}
+html, body, .stApp, .stMarkdown, button, input, textarea, select {font-family:'Inter', system-ui, sans-serif;}
+.stApp {background: var(--paper); color: var(--ink);}
+header[data-testid="stHeader"] {background: transparent; height: 0;}
+[data-testid="stToolbar"] {right: 1rem; top: .5rem;}
+#MainMenu, [data-testid="stDecoration"] {visibility: hidden;}
+.block-container {padding-top: 1.4rem; padding-bottom: 3rem; max-width: 1240px;}
+h1, h2, h3, h4, .ds-title, .ds-h {font-family:'Archivo', sans-serif; font-stretch: 85%; color: var(--ink); letter-spacing:-0.01em;}
+/* nav + hero */
+.ds-nav {display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; margin-bottom: 26px;}
+.ds-brand {display:flex; align-items:center; gap:10px; font-family:'Archivo',sans-serif; font-weight:800; font-size:1.15rem; color:var(--ink);}
+.ds-mark {width:26px; height:26px; border-radius:7px; background: linear-gradient(135deg, #30123b 0%, #4662d7 30%, #1ae4b6 55%, #faba39 78%, #ca2a04 100%);
+          box-shadow: inset 0 0 0 1px rgba(255,255,255,.25);}
+.ds-tag {font-size:.74rem; font-weight:600; color:var(--ink2); background:var(--surface); border:1px solid var(--line);
+         padding:3px 9px; border-radius:999px; margin-left:4px;}
+.ds-links {display:flex; gap:6px; flex-wrap:wrap;}
+.ds-links a {color: var(--ink2) !important; font-weight:500; font-size:.88rem; text-decoration:none !important; padding:7px 13px;
+             border-radius:999px; border:1px solid transparent; transition: background .15s, border-color .15s;}
+.ds-links a:hover {background: var(--surface); border-color: var(--line);}
+.ds-links a.cta {background: var(--ink); color:#fff !important;}
+.ds-links a.cta:hover {background: var(--ink2);}
+.ds-hero {display:grid; grid-template-columns: 1.2fr 1fr; gap: 28px; align-items:end; margin-bottom: 22px;}
+.ds-title {font-size: 2.5rem !important; font-weight: 800; line-height: 1.05; margin: 0; max-width: 20ch;}
+.ds-sub {color: var(--muted); font-size: 1rem; line-height:1.55; margin: 0; max-width: 56ch;}
+.ds-stats {display:flex; gap: 22px; margin-top: 14px; flex-wrap: wrap;}
+.ds-stat b {display:block; font-family:'Archivo',sans-serif; font-size:1.25rem; color:var(--ink);}
+.ds-stat span {font-size:.8rem; color:var(--muted);}
+/* cards / containers */
+.st-key-ds_toolbar, .st-key-ds_result {background: var(--surface); border-color: var(--line) !important;
+     border-radius: var(--r-lg) !important; box-shadow: var(--sh-2);}
+.ds-section {font-family:'Archivo',sans-serif; font-weight:700; font-size:1.05rem; color:var(--ink); margin: 0 0 2px;}
+/* inputs */
+label, [data-testid="stWidgetLabel"] p {font-weight: 600 !important; font-size: .82rem !important; color: var(--ink2) !important;}
+[data-baseweb="select"] > div, [data-testid="stFileUploaderDropzone"] {border-radius: var(--r-md) !important; border-color: var(--line) !important;
+     transition: border-color .15s, box-shadow .15s;}
+[data-baseweb="select"] > div:hover {border-color: #c9cede !important;}
+[data-baseweb="select"] > div:focus-within {box-shadow: 0 0 0 3px var(--accent-soft);}
+[data-testid="stFileUploaderDropzone"] {background: #fafbfc; border: 1.5px dashed #cdd2dc !important;}
+[data-testid="stFileUploaderDropzone"]:hover {border-color: var(--accent) !important; background: #fffaf8;}
+[data-testid="stButtonGroup"] button {border-radius: var(--r-sm) !important; font-weight: 500; transition: background .15s, color .15s;}
+.stButton > button, [data-testid="stPopover"] button, .stDownloadButton > button {border-radius: var(--r-md); font-weight: 600;
+     border-color: var(--line); box-shadow: var(--sh-1); transition: transform .12s, box-shadow .15s, border-color .15s;}
+.stButton > button:hover, [data-testid="stPopover"] button:hover, .stDownloadButton > button:hover {border-color: var(--accent);
+     color: var(--accent-d); box-shadow: var(--sh-2); transform: translateY(-1px);}
+.stDownloadButton > button {background: var(--ink); color: #fff; border-color: var(--ink); padding: .65rem 1rem;}
+.stDownloadButton > button:hover {background: var(--ink2); color:#fff; border-color: var(--ink2);}
+*:focus-visible {outline: 2px solid var(--accent) !important; outline-offset: 2px;}
+/* result */
+.ds-legend {display:flex; align-items:center; gap:10px; color: var(--muted); font-size: 0.8rem; margin: 10px 2px 2px; font-variant-numeric: tabular-nums;}
+.ds-bar {flex:1; height: 8px; border-radius: 4px; background: linear-gradient(90deg, TURBO_STOPS);}
+.ds-read {background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-lg); padding: 18px 20px; box-shadow: var(--sh-2);}
+.ds-read h4 {margin: 0 0 2px 0; font-size: 1.08rem;}
+.ds-read .cap {color: var(--muted); font-size: 0.8rem; margin-bottom: 8px;}
+.ds-pill {display:inline-block; font-size:.72rem; font-weight:600; color:var(--accent-d); background:var(--accent-soft); padding:2px 8px; border-radius:999px; margin-left:6px; vertical-align: 2px;}
+.ds-row {display:grid; grid-template-columns: 1fr auto; row-gap: 4px; padding: 11px 0; border-top: 1px solid var(--line2);}
+.ds-row .k {font-size: 0.84rem; color: var(--ink2); font-weight:500;}
+.ds-row .v {font-family: 'Archivo', sans-serif; font-size: 1.4rem; font-weight: 700; color: var(--ink); text-align:right; font-variant-numeric: tabular-nums;}
+.ds-row .d {grid-column: 1 / 3; display:grid; grid-template-columns: 52px 1fr auto; align-items:center; gap:8px; font-size: 0.75rem; color: var(--muted);}
+.ds-track {height: 6px; background: var(--line2); border-radius: 3px; position: relative; overflow: hidden;}
 .ds-fill {position:absolute; left:0; top:0; bottom:0; border-radius: 3px;}
 .good {color: var(--good); font-weight: 700;} .bad {color: var(--bad); font-weight: 700;}
-.ds-flowlabel {font-family:'Archivo',sans-serif; font-weight:700; color: var(--ink); font-size: 1rem; margin: 10px 0 2px;}
-.ds-flowcap {color: var(--muted); font-size: 0.84rem; margin: 0 0 8px;}
-.ds-note {color: var(--muted); font-size: 0.84rem; line-height: 1.45;}
-.ds-foot {margin-top: 26px; padding-top: 10px; border-top: 1px solid var(--line); color: var(--muted); font-size: 0.82rem;}
-.ds-foot a {color: var(--ink);}
-div[data-testid="stVerticalBlockBorderWrapper"] {background: #fff;}
-.stButton button[kind="primary"] {background: var(--accent); border-color: var(--accent);}
-@media (max-width: 640px) {.ds-title {font-size: 1.7rem;} .ds-links a {margin: 0 14px 0 0;}}
+.ds-flowlabel {font-family:'Archivo',sans-serif; font-weight:700; color: var(--ink); font-size: 1rem; margin: 18px 0 2px; display:flex; align-items:center; gap:10px;}
+.ds-flowlabel .n {width:24px; height:24px; border-radius:50%; background:var(--ink); color:#fff; font-size:.78rem; display:inline-flex; align-items:center; justify-content:center;}
+.ds-flowcap {color: var(--muted); font-size: 0.84rem; margin: 0 0 10px 34px;}
+.ds-note {color: var(--muted); font-size: 0.84rem; line-height: 1.5;}
+[data-testid="stImage"] img {border-radius: var(--r-md); box-shadow: var(--sh-1);}
+[data-testid="stCaptionContainer"], [data-testid="stImageCaption"] {color: var(--muted) !important; font-size:.78rem !important;}
+/* empty state */
+.ds-empty {border: 1.5px dashed #cdd2dc; border-radius: var(--r-lg); background: var(--surface); padding: 34px 24px; text-align:center; margin: 18px 0 22px;}
+.ds-empty .ic {width:44px; height:44px; margin: 0 auto 12px; border-radius: 12px; background: var(--accent-soft); color: var(--accent-d);
+     display:flex; align-items:center; justify-content:center; font-size: 20px;}
+.ds-empty h4 {margin: 0 0 4px; font-size: 1.05rem;}
+.ds-empty p {color: var(--muted); font-size: .88rem; margin: 0 auto; max-width: 46ch;}
+/* tabs */
+.stTabs [role="tablist"] {gap: 4px; background: #e9ebf1; padding: 4px; border-radius: 12px; width: fit-content; max-width: 100%; overflow-x:auto; margin-top: 26px;}
+.stTabs [role="tab"] {height: 36px; padding: 0 14px; border-radius: 9px; font-weight: 500; color: var(--ink2); background: transparent; white-space: nowrap;}
+.stTabs [role="tab"]:hover {color: var(--ink);}
+.stTabs [role="tab"][aria-selected="true"] {background: var(--surface) !important; color: var(--ink) !important; box-shadow: var(--sh-1);}
+.stTabs [role="tablist"] > div:not([role="tab"]) {display: none;}
+.stTabs [data-testid="stTabPanel"] {padding-top: 14px;}
+/* expander, alerts, tables */
+[data-testid="stExpander"] details {border-radius: var(--r-lg) !important; border-color: var(--line) !important; background: var(--surface); box-shadow: var(--sh-1);}
+[data-testid="stExpander"] summary {font-weight: 600;}
+[data-testid="stAlert"] {border-radius: var(--r-md);}
+[data-testid="stDataFrame"] {border: 1px solid var(--line); border-radius: var(--r-md); overflow: hidden;}
+[data-testid="stSpinner"] {color: var(--muted);}
+.ds-foot {margin-top: 34px; padding-top: 16px; border-top: 1px solid var(--line); color: var(--muted); font-size: 0.8rem;
+          display:flex; justify-content:space-between; gap: 12px; flex-wrap: wrap;}
+.ds-foot a {color: var(--ink2);}
+@media (max-width: 900px) {.ds-hero {grid-template-columns: 1fr; gap: 10px;}}
+@media (max-width: 640px) {.ds-title {font-size: 1.8rem !important;} .block-container {padding-left: 1rem; padding-right: 1rem;}
+     .ds-links a:not(.cta) {display:none;}}
+@media (prefers-reduced-motion: reduce) {* {transition: none !important;}}
 </style>
 """.replace("TURBO_STOPS", TURBO), unsafe_allow_html=True)
 
@@ -267,13 +332,19 @@ def readout_row(label, ours, base, unit, higher_better, digits):
 
 # ----------------------------------------------------------------------------- header
 st.markdown(f"""
-<div class="ds-top">
-  <div><div class="ds-title">DepthSR</div>
-  <p class="ds-sub">Sharpens low-resolution, noisy or incomplete depth maps. The colour photo is used as a guide only
-  where it shows a real depth edge, so object outlines come out sharp and wall patterns stay flat.</p></div>
-  <div class="ds-links"><a href="{REPO}" target="_blank">Code</a>
-  <a href="{REPO}/blob/main/results/eval_P4_T74.md" target="_blank">Results</a>
-  <a href="{REPO}/blob/main/docs/design.md" target="_blank">Design</a></div>
+<div class="ds-nav">
+  <div class="ds-brand"><span class="ds-mark"></span>DepthSR<span class="ds-tag">Team T74, problem P4</span></div>
+  <div class="ds-links"><a href="{REPO}/blob/main/results/eval_P4_T74.md" target="_blank">Results</a>
+  <a href="{REPO}/blob/main/docs/design.md" target="_blank">Design</a>
+  <a class="cta" href="{REPO}" target="_blank">View code</a></div>
+</div>
+<div class="ds-hero">
+  <div class="ds-title">Sharper depth maps, guided by the photo.</div>
+  <div><p class="ds-sub">DepthSR upsamples low-resolution, noisy or incomplete depth. The colour photo guides it only where it
+  shows a real depth edge, so object outlines come out sharp and wall patterns stay flat.</p>
+  <div class="ds-stats"><div class="ds-stat"><b>4.33 cm</b><span>error at x8 (bicubic 5.82)</span></div>
+  <div class="ds-stat"><b>0.90</b><span>edge F1 at x8 (bicubic 0.48)</span></div>
+  <div class="ds-stat"><b>x2 to x16</b><span>one model</span></div></div></div>
 </div>
 """, unsafe_allow_html=True)
 if not SR.has_weights:
@@ -293,7 +364,7 @@ def nice_name(path):
 
 
 # ----------------------------------------------------------------------------- toolbar
-with st.container(border=True):
+with st.container(border=True, key="ds_toolbar"):
     c1, c2, c3, c4 = st.columns([1.7, 1.15, 1.0, 0.85], gap="medium")
     with c1:
         src = st.segmented_control("Input", [SRC_EXAMPLE, SRC_UPLOAD, SRC_PHOTO], default=SRC_EXAMPLE) or SRC_EXAMPLE
@@ -329,8 +400,8 @@ with st.container(border=True):
             payload = (rb, db, depth_file.name)
             key = hashlib.md5(rb + db).hexdigest()
         else:
-            st.markdown('<span class="ds-note">Add a colour photo and its depth map to run. For a quick try, '
-                        'use a test scene or "Any photo".</span>', unsafe_allow_html=True)
+            st.markdown('<span class="ds-note">Accepted: 16-bit PNG in millimetres, KITTI PNG, 8-bit PNG, .npy, .pfm '
+                        'or .tiff. The photo and depth map must show the same view.</span>', unsafe_allow_html=True)
     else:
         photo_file = st.file_uploader("Any photo (JPG or PNG)", type=["png", "jpg", "jpeg", "bmp", "webp"])
         st.markdown('<span class="ds-note">Without a depth sensor, depth is first estimated from the photo with '
@@ -343,7 +414,13 @@ with st.container(border=True):
 
 # ----------------------------------------------------------------------------- run
 if payload is None:
-    st.markdown('<p class="ds-note" style="margin-top:14px">Results appear here as soon as an input is ready.</p>',
+    if src == SRC_UPLOAD:
+        _t, _p = "Add a colour photo and its depth map", "Results appear here as soon as both files are uploaded. For a quick try, pick Test scene or Any photo."
+    elif src == SRC_PHOTO:
+        _t, _p = "Add any photo", "Depth is estimated from the photo first, then rebuilt by DepthSR. Results appear here automatically."
+    else:
+        _t, _p = "No test scene selected", "Pick a scene above to see the result."
+    st.markdown(f'<div class="ds-empty"><div class="ic">&#8682;</div><h4 class="ds-h">{_t}</h4><p>{_p}</p></div>',
                 unsafe_allow_html=True)
 else:
     try:
@@ -369,16 +446,16 @@ else:
     _, _, sel_r = res[method]
 
     left, right = st.columns([2.05, 1], gap="large")
-    with left:
+    with left.container(border=True, key="ds_result"):
         compare_slider(colorize(bic_o, vmin, vmax), colorize(out, vmin, vmax),
-                       f"Bicubic x{scale}", NAMES[method], height=468)
+                       f"Bicubic x{scale}", NAMES[method], height=452)
         lo, hi = vmin * unit_mul, vmax * unit_mul
         st.markdown(f'<div class="ds-legend"><span>near {lo:.0f}{unit_lbl if src != SRC_PHOTO else ""}</span>'
                     f'<div class="ds-bar"></div><span>far {hi:.0f}{unit_lbl if src != SRC_PHOTO else ""}</span></div>'
                     '<p class="ds-note">Drag the handle. Left: plain bicubic interpolation of the low-resolution input. '
                     'Right: our result. Watch the object outlines.</p>', unsafe_allow_html=True)
     with right:
-        rows = [f'<div class="ds-read"><h4>{NAMES[method]} at x{scale}</h4>'
+        rows = [f'<div class="ds-read"><h4>{NAMES[method]}<span class="ds-pill">x{scale}</span></h4>'
                 f'<div class="cap">{lr.shape[1]}x{lr.shape[0]} depth in, {W}x{H} out, '
                 f'{R["ms"] / 1000:.2f} s on CPU</div>']
         if sel_r is not None:
@@ -402,12 +479,12 @@ else:
         ca = R["cls_aux"]
         e_rgb, _ = C.rgb_edges(rgb)
         groups = [
-            ("1. What the sensor gives", "A colour photo and a coarse depth map.",
+            ("1|What the sensor gives", "A colour photo and a coarse depth map.",
              [(rgb, "Colour photo"),
               (colorize(cv2.resize(lr, (W, H), interpolation=cv2.INTER_NEAREST), vmin, vmax),
                f"Low-res depth, x{scale} smaller (black = missing)"),
               (colorize(ca["bicubic"], vmin, vmax), "Gaps filled, plain bicubic")]),
-            ("2. Classical stage", "Photo edges are trusted only where the depth also jumps; pattern edges are ignored.",
+            ("2|Classical stage", "Photo edges are trusted only where the depth also jumps; pattern edges are ignored.",
              [(colorize_map(e_rgb), "Every edge in the photo"),
               (colorize_map(ca["band"]), "Where the depth jumps"),
               (colorize_map(ca["trust"]), "Trusted edges (both agree)"),
@@ -424,9 +501,11 @@ else:
         net.append((colorize(out, vmin, vmax), f"Final: {NAMES[method]}"))
         if gt is not None:
             net.append((colorize(gt, vmin, vmax), "Reference depth" if src != SRC_PHOTO else "Estimated depth (reference)"))
-        groups.append(("3. Network", "A small network corrects the classical result where it is still wrong.", net))
+        groups.append(("3|Network", "A small network corrects the classical result where it is still wrong.", net))
         for title, cap, ims in groups:
-            st.markdown(f'<p class="ds-flowlabel">{title}</p><p class="ds-flowcap">{cap}</p>', unsafe_allow_html=True)
+            _n, _t = title.split("|")
+            st.markdown(f'<p class="ds-flowlabel"><span class="n">{_n}</span>{_t}</p><p class="ds-flowcap">{cap}</p>',
+                        unsafe_allow_html=True)
             cols = st.columns(min(len(ims), 5))
             for i, (im, c) in enumerate(ims):
                 cols[i % len(cols)].image(im, caption=c, use_container_width=True)
@@ -487,6 +566,6 @@ with st.expander("How DepthSR works"):
     if os.path.exists(arch):
         st.image(arch, caption="System architecture", use_container_width=True)
 
-st.markdown(f"""<div class="ds-foot">Team T74: Jidvish Gupta, Keerthana Kiran, Krish Garg, Krishaa Daga.
-Computer Vision Hackathon 2026, problem P4. <a href="{REPO}" target="_blank">Source code and results on GitHub</a>.</div>""",
+st.markdown(f"""<div class="ds-foot"><span>Team T74: Jidvish Gupta, Keerthana Kiran, Krish Garg, Krishaa Daga</span>
+<span>Computer Vision Hackathon 2026, problem P4. <a href="{REPO}" target="_blank">Source and results on GitHub</a></span></div>""",
             unsafe_allow_html=True)
